@@ -207,9 +207,16 @@ function registerIpc(): void {
     launchClaude()
   })
   ipcMain.handle('toggle:ponytail', async (_e, on: unknown) => {
+    const previous = settings.ponytail
     settings.ponytail = on === true
     save()
-    await runShell(`claude plugin ${settings.ponytail ? 'enable' : 'disable'} ponytail@ponytail`)
+    const r = await runShell(`claude plugin ${settings.ponytail ? 'enable' : 'disable'} ponytail@ponytail`)
+    if (r.code !== 0) {
+      settings.ponytail = previous
+      save()
+      pushState()
+      return
+    }
     launchClaude()
   })
   ipcMain.handle('service:restart', (_e, n: unknown) => svc(n)?.restart())
