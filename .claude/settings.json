@@ -1,0 +1,6 @@
+{
+  "enabledPlugins": {
+    "design-mastery@claude-code-workflows": true,
+    "accessibility-compliance@claude-code-workflows": true
+  }
+}
