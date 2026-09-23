@@ -33,6 +33,7 @@ let size = { cols: 120, rows: 30 }
 let installed: Record<string, boolean> = {}
 let services: Record<ServiceName, Service> | null = null
 const ports: Record<ServiceName, number> = { codeburn: 4747, headroom: 8787 }
+let quitting = false
 
 const override = (name: string, fallback: string) => process.env[`CCM_CMD_${name}`] ?? fallback
 const save = () => saveSettings(settingsFile(), settings)
@@ -73,25 +74,32 @@ function stopClaude(): void {
 }
 
 function launchClaude(): void {
+  if (quitting) return
   stopClaude()
   if (!project) return pushState()
   const env: Record<string, string> = { ...(process.env as Record<string, string>) }
   ptyUsesHeadroom = settings.headroom && installed.headroom !== false
   if (ptyUsesHeadroom) env.ANTHROPIC_BASE_URL = `http://127.0.0.1:${ports.headroom}`
-  const p = spawnPty(process.env.ComSpec ?? 'cmd.exe', ['/c', override('CLAUDE', 'claude')], {
-    name: 'xterm-256color',
-    cwd: project,
-    env,
-    cols: size.cols,
-    rows: size.rows
-  })
-  pty = p
-  p.onData(d => send('pty:data', d))
-  p.onExit(() => {
-    if (pty !== p) return
+  try {
+    const p = spawnPty(process.env.ComSpec ?? 'cmd.exe', ['/c', override('CLAUDE', 'claude')], {
+      name: 'xterm-256color',
+      cwd: project,
+      env,
+      cols: size.cols,
+      rows: size.rows
+    })
+    pty = p
+    p.onData(d => send('pty:data', d))
+    p.onExit(() => {
+      if (pty !== p) return
+      pty = null
+      send('pty:exit')
+    })
+  } catch (err) {
     pty = null
+    send('pty:data', `\r\nFailed to start Claude Code: ${err instanceof Error ? err.message : String(err)}\r\n`)
     send('pty:exit')
-  })
+  }
   pushState()
 }
 
@@ -123,7 +131,7 @@ async function pickProject(): Promise<void> {
 // ---- Services -------------------------------------------------------------
 
 function syncServices(): void {
-  if (!services) return
+  if (quitting || !services) return
   if (installed.codeburn !== false && services.codeburn.status === 'stopped') services.codeburn.start()
   if (settings.headroom && installed.headroom !== false && services.headroom.status === 'stopped') services.headroom.start()
 }
@@ -259,6 +267,7 @@ function registerIpc(): void {
     services?.codeburn.stop()
     services?.headroom.stop()
     for (const c of UPDATE_CMDS) {
+      if (quitting) break
       send('setup:log', `> ${c}`)
       const r = await runShell(c, l => send('setup:log', l))
       if (r.code !== 0) send('setup:log', `(exit ${r.code}, continuing)`)
@@ -355,6 +364,7 @@ if (!app.requestSingleInstanceLock()) {
     initUpdater()
   })
   app.on('before-quit', () => {
+    quitting = true
     stopClaude()
     if (services) for (const s of Object.values(services)) s.stop()
     killAll()

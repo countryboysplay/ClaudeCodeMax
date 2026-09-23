@@ -43,6 +43,17 @@ describe('Service', () => {
     expect(svc.status).toBe('starting')
   })
 
+  it('keeps probing past 60 attempts until healthy (no attempt cap)', async () => {
+    let calls = 0
+    const { svc } = make(async () => {
+      calls++
+      return calls > 70
+    })
+    svc.start()
+    await vi.advanceTimersByTimeAsync(71 * 500)
+    expect(svc.status).toBe('up')
+  })
+
   it('restarts with 1s, 3s, 10s backoff, then gives up', async () => {
     const { svc, children } = make()
     svc.start()

@@ -23,6 +23,10 @@ export function loadSettings(file: string): Settings {
   const s = { ...defaults(), ...parsed }
   s.recent = Array.isArray(s.recent) ? s.recent.filter(x => typeof x === 'string') : []
   s.skipped = Array.isArray(s.skipped) ? s.skipped.filter(x => typeof x === 'string') : []
+  if (typeof s.split !== 'number' || !Number.isFinite(s.split) || s.split < 0.2 || s.split > 0.8) s.split = defaults().split
+  if (typeof s.headroom !== 'boolean') s.headroom = defaults().headroom
+  if (typeof s.ponytail !== 'boolean') s.ponytail = defaults().ponytail
+  if (typeof s.tab !== 'string') s.tab = defaults().tab
   return s
 }
 

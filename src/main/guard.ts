@@ -26,7 +26,12 @@ export function guardWebviews(win: BrowserWindow, getProject: () => string | nul
     prefs.nodeIntegration = false
     prefs.contextIsolation = true
     prefs.sandbox = true
+    prefs.webSecurity = true
     if (!isAllowedUrl(params.src, getProject())) e.preventDefault()
   })
-  win.webContents.on('did-attach-webview', (_e, contents) => lockDown(contents, url => isAllowedUrl(url, getProject())))
+  win.webContents.on('did-attach-webview', (_e, contents) => {
+    lockDown(contents, url => isAllowedUrl(url, getProject()))
+    contents.session.setPermissionRequestHandler((_wc, _perm, cb) => cb(false))
+    contents.session.setPermissionCheckHandler(() => false)
+  })
 }

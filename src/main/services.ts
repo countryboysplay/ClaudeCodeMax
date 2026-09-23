@@ -79,7 +79,7 @@ export class Service extends EventEmitter {
   }
 
   private async waitHealthy(child: Child): Promise<void> {
-    for (let i = 0; i < 60 && this.child === child; i++) {
+    while (this.child === child) {
       if (await this.probe(this.spec.healthUrl)) {
         if (this.child === child) this.set('up')
         return

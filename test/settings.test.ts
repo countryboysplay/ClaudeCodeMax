@@ -21,6 +21,28 @@ describe('loadSettings', () => {
     expect(s.skipped).toEqual([])
     expect(s.headroom).toBe(false)
   })
+  it('repairs wrong-typed split, headroom, ponytail and tab to defaults', () => {
+    const f = join(dir, 'wrong-rest.json')
+    writeFileSync(f, JSON.stringify({ split: null, headroom: 'false', ponytail: 1, tab: 5 }))
+    expect(loadSettings(f)).toEqual(defaults())
+  })
+  it('repairs a non-numeric split, and a split outside [0.2, 0.8]', () => {
+    const f1 = join(dir, 'split-nan.json')
+    writeFileSync(f1, JSON.stringify({ split: 'abc' }))
+    expect(loadSettings(f1).split).toBe(0.6)
+    const f2 = join(dir, 'split-oob.json')
+    writeFileSync(f2, JSON.stringify({ split: 0.9 }))
+    expect(loadSettings(f2).split).toBe(0.6)
+  })
+  it('keeps valid split, headroom, ponytail and tab values', () => {
+    const f = join(dir, 'valid-rest.json')
+    writeFileSync(f, JSON.stringify({ split: 0.3, headroom: false, ponytail: false, tab: 'graph' }))
+    const s = loadSettings(f)
+    expect(s.split).toBe(0.3)
+    expect(s.headroom).toBe(false)
+    expect(s.ponytail).toBe(false)
+    expect(s.tab).toBe('graph')
+  })
   it('does not share arrays between loads', () => {
     const a = loadSettings(join(dir, 'none.json'))
     a.skipped.push('uv')

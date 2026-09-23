@@ -10,7 +10,7 @@
 
 <br>
 
-<a href="https://github.com/countryboysplay/ClaudeCodeMax/releases/latest"><img src="https://img.shields.io/badge/Download_for_Windows-b4501f?style=for-the-badge&logoColor=white" alt="Download for Windows" height="40"></a>
+<a href="https://github.com/countryboysplay/ClaudeCodeMax/releases"><img src="https://img.shields.io/badge/Download_for_Windows-b4501f?style=for-the-badge&logoColor=white" alt="Download for Windows" height="40"></a>
 
 <sub>Free and open source · Per-user install, no admin rights · Unofficial community project</sub>
 
@@ -132,7 +132,7 @@ If a default port is taken, the app picks a free one and passes it to both the t
    | uv (Python tools) | for Headroom or Graphify | `winget install --id astral-sh.uv` |
    | Headroom | optional | `uv tool install --python 3.13 "headroom-ai[all]"` |
    | Graphify | optional | `uv tool install graphifyy`, then `graphify install` |
-   | Ponytail | optional | `claude plugin marketplace add DietrichGebert/ponytail`, then `claude plugin install ponytail@ponytail` |
+   | Ponytail | optional | `claude plugin marketplace add DietrichGebert/ponytail`, then `claude plugin install ponytail@ponytail -y` |
 
    You can skip any optional tool and install it later from **Tools → Re-run setup**. After each install, the app reloads your PATH, so you don't need to reboot.
 5. **Open a project folder.** Claude Code starts in the terminal. The first time, **sign in there** using Claude Code's own sign-in. ClaudeCodeMax never sees or stores your credentials.
@@ -194,7 +194,8 @@ test/           Vitest unit tests + Playwright smoke test and fixtures
 
 1. Bump `version` in `package.json` and commit.
 2. `git tag vX.Y.Z && git push --tags`
-3. The [release workflow](.github/workflows/release.yml) runs the type check, unit tests and smoke test on `windows-latest`. Then it builds the NSIS installer and publishes a GitHub Release. Installed copies find the update the next time they start, download it, and offer **Restart to update**.
+3. The [release workflow](.github/workflows/release.yml) runs the type check, unit tests and smoke test on `windows-latest`. Then it builds the NSIS installer and publishes a **draft** GitHub Release.
+4. Review the draft, then publish it. For a 0.x pre-release: `gh release edit vX.Y.Z --draft=false --prerelease`. Installed copies auto-update only from full (non-pre-release) releases: once a release is published as a full release, installed copies find it the next time they start, download it, and offer **Restart to update**.
 
 Before tagging, test the installer on a clean Windows 11 VM or Windows Sandbox: the SmartScreen flow, the wizard installing from scratch, the sign-in, and a clean quit.
 
