@@ -58,7 +58,7 @@ These are small, pure-where-possible modules under `src/main/` with Vitest unit 
 
 ## Review Focus
 
-1. **Project paths with spaces or non-ASCII characters** (e.g. `C:\Users\jonat\OneDrive\Desktop\Claude Terminal`). The PTY cwd, the graph `file://` URL and the allowlist must all work. Covered by the Task 4 tests (a project path with a space) and the Task 10 smoke test (a temp project named `ccm project …`).
+1. **Project paths with spaces or non-ASCII characters** (e.g. `C:\Users\me\Desktop\Claude Terminal`). The PTY cwd, the graph `file://` URL and the allowlist must all work. Covered by the Task 4 tests (a project path with a space) and the Task 10 smoke test (a temp project named `ccm project …`).
 2. **Corrupt, missing or hand-edited `settings.json`.** The app must start with defaults, never crash. Covered by Task 3 `settings.test.ts`.
 3. **A default port already in use** (e.g. the user already runs `codeburn web` on 4747). The app picks another free port and uses it consistently. Covered by Task 3 `ports.test.ts`.
 4. **Registry PATH with `%VARS%`, duplicates, empty segments or `C:\` roots** after winget installs. PATH is expanded, deduped and kept intact. Covered by Task 2 `path.test.ts`.
