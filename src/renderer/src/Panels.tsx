@@ -10,7 +10,7 @@ const TABS = [
 
 function Missing({ tool, onSetup }: { tool: string; onSetup: () => void }) {
   return (
-    <div className="empty">
+    <div className="empty muted">
       <p>{tool} isn't installed.</p>
       <button onClick={onSetup}>Install {tool}</button>
     </div>

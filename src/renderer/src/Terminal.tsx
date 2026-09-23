@@ -3,6 +3,7 @@ import { Terminal as XTerm } from '@xterm/xterm'
 import { FitAddon } from '@xterm/addon-fit'
 
 const cssVar = (name: string) => getComputedStyle(document.documentElement).getPropertyValue(name).trim()
+const currentTheme = () => ({ background: cssVar('--term-bg'), foreground: cssVar('--term-fg'), cursor: cssVar('--accent') })
 
 export function Terminal({ project }: { project: string | null }) {
   const host = useRef<HTMLDivElement>(null)
@@ -14,7 +15,7 @@ export function Terminal({ project }: { project: string | null }) {
       fontFamily: '"Cascadia Mono", Consolas, monospace',
       fontSize: 14,
       cursorBlink: true,
-      theme: { background: cssVar('--term-bg'), foreground: cssVar('--term-fg'), cursor: cssVar('--accent') }
+      theme: currentTheme()
     })
     const fit = new FitAddon()
     t.loadAddon(fit)
@@ -42,9 +43,15 @@ export function Terminal({ project }: { project: string | null }) {
       }),
       window.api.onPtyExit(() => setEnded(true))
     ]
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    const onThemeChange = () => {
+      t.options.theme = currentTheme()
+    }
+    media.addEventListener('change', onThemeChange)
     return () => {
       offs.forEach(off => off())
       ro.disconnect()
+      media.removeEventListener('change', onThemeChange)
       t.dispose()
     }
   }, [])
