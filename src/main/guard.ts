@@ -10,11 +10,13 @@ function lockDown(contents: WebContents, allowed: (url: string) => boolean): voi
     openExternal(url)
     return { action: 'deny' }
   })
-  contents.on('will-navigate', (e, url) => {
+  const navigationHandler = (e: Electron.Event, url: string) => {
     if (allowed(url)) return
     e.preventDefault()
     openExternal(url)
-  })
+  }
+  contents.on('will-navigate', navigationHandler)
+  contents.on('will-redirect', navigationHandler)
 }
 
 export function guardWebviews(win: BrowserWindow, getProject: () => string | null): void {
