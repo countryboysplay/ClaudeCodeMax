@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128" role="img" aria-labelledby="t">
+  <title id="t">ClaudeCodeMax</title>
+  <defs>
+    <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ee8f5c"/>
+      <stop offset="1" stop-color="#b4501f"/>
+    </linearGradient>
+  </defs>
+  <rect width="128" height="128" rx="28" fill="url(#g)"/>
+  <!-- terminal pane -->
+  <path d="M30 46 L48 60 L30 74" fill="none" stroke="#fff" stroke-width="9" stroke-linecap="round" stroke-linejoin="round"/>
+  <rect x="54" y="72" width="22" height="8" rx="4" fill="#fff"/>
+  <!-- divider -->
+  <rect x="86" y="28" width="3" height="72" rx="1.5" fill="#fff" opacity=".45"/>
+  <!-- tool panels -->
+  <rect x="95" y="34" width="12" height="16" rx="4" fill="#fff"/>
+  <rect x="95" y="56" width="12" height="16" rx="4" fill="#fff" opacity=".8"/>
+  <rect x="95" y="78" width="12" height="16" rx="4" fill="#fff" opacity=".6"/>
+</svg>
