@@ -1,4 +1,4 @@
-# Claude Hub — Design Spec
+# ClaudeCodeMax — Design Spec
 
 Date: 2026-09-23
 Status: Approved in brainstorming, pending written-spec review
@@ -106,7 +106,7 @@ Implementation must check the exact URL and port of the Headroom dashboard, and 
 - **Graphify with no graph yet:** an empty state with a **Build graph** button. The app watches `graphify-out/` with `fs.watch` and reloads the tab when `graph.html` changes.
 - **Quit:** run `taskkill /PID <pid> /T /F` for every spawned process tree, including the PTY.
 
-**Persistence.** `%APPDATA%\Claude Hub\settings.json` holds recent projects (up to 10), the Headroom and Ponytail toggles, and the split and tab layout. Nothing else is stored.
+**Persistence.** `%APPDATA%\ClaudeCodeMax\settings.json` holds recent projects (up to 10), the Headroom and Ponytail toggles, and the split and tab layout. Nothing else is stored.
 
 **Security**
 - `contextIsolation: true`, `nodeIntegration: false`, `sandbox: true` in the renderer.
@@ -115,7 +115,7 @@ Implementation must check the exact URL and port of the Headroom dashboard, and 
 
 ## 5. Packaging and updates
 
-- `electron-builder` builds an NSIS installer, per-user (no admin), unsigned: `ClaudeHub-Setup-x.y.z.exe`.
+- `electron-builder` builds an NSIS installer, per-user (no admin), unsigned: `ClaudeCodeMax-Setup-x.y.z.exe`.
 - The README documents the SmartScreen bypass: **More info → Run anyway**.
 - `THIRD_PARTY_NOTICES.md` carries the Apache-2.0 and MIT notices for all four tools and for LibreUIUX if any of its assets ship.
 - `electron-updater` checks GitHub Releases on launch and prompts "Restart to update".
