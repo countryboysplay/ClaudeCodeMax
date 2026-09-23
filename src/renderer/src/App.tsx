@@ -1,4 +1,4 @@
-import { useEffect, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import type { AppState, StepView } from '../../shared/types'
 import { Terminal } from './Terminal'
 import { Panels } from './Panels'
@@ -15,7 +15,7 @@ function Toggle(props: { label: string; on: boolean; available: boolean; onChang
   return (
     <button className={`toggle ${props.on ? 'on' : 'off'}`} aria-pressed={props.on} onClick={() => props.onChange(!props.on)}>
       <span className="dot-mark" aria-hidden="true" />
-      {props.label} {props.on ? 'on' : 'off'}
+      {props.label}
     </button>
   )
 }
@@ -26,35 +26,37 @@ function Header({ state, onSetup }: { state: AppState; onSetup: () => void }) {
     <header className="header">
       <label>
         Project
-        <select value={state.project ?? ''} onChange={e => choose(e.target.value)}>
+        <select value={state.project ?? ''} title={state.project ?? undefined} onChange={e => choose(e.target.value)}>
           {!state.project && <option value="">No project</option>}
           {state.recent.map(d => (
-            <option key={d} value={d}>
+            <option key={d} value={d} title={d}>
               {d}
             </option>
           ))}
           <option value="__pick">Open folder…</option>
         </select>
       </label>
-      <Toggle
-        label="Headroom"
-        on={state.headroom}
-        available={state.installed.headroom !== false}
-        onChange={v => void window.api.setHeadroom(v)}
-        onInstall={onSetup}
-      />
-      <Toggle
-        label="Ponytail"
-        on={state.ponytail}
-        available={state.installed.ponytail !== false}
-        onChange={v => void window.api.setPonytail(v)}
-        onInstall={onSetup}
-      />
+      <div role="group" aria-label="Features" className="group">
+        <Toggle
+          label="Headroom"
+          on={state.headroom}
+          available={state.installed.headroom !== false}
+          onChange={v => void window.api.setHeadroom(v)}
+          onInstall={onSetup}
+        />
+        <Toggle
+          label="Ponytail"
+          on={state.ponytail}
+          available={state.installed.ponytail !== false}
+          onChange={v => void window.api.setPonytail(v)}
+          onInstall={onSetup}
+        />
+      </div>
       {state.ponytail && state.installed.ponytail !== false && state.project && (
-        <>
-          <button onClick={() => window.api.ptyWrite('/ponytail-review\r')}>Ponytail review</button>
-          <button onClick={() => window.api.ptyWrite('/ponytail-audit\r')}>Ponytail audit</button>
-        </>
+        <div role="group" aria-label="Ponytail commands" className="group sep">
+          <button className="subtle" onClick={() => window.api.ptyWrite('/ponytail-review\r')}>Ponytail review</button>
+          <button className="subtle" onClick={() => window.api.ptyWrite('/ponytail-audit\r')}>Ponytail audit</button>
+        </div>
       )}
     </header>
   )
@@ -92,6 +94,7 @@ function Divider({ split, onChange }: { split: number; onChange: (v: number) => 
       aria-valuenow={Math.round(split * 100)}
       aria-valuemin={20}
       aria-valuemax={80}
+      aria-valuetext={`Terminal ${Math.round(split * 100)}%, panels ${Math.round((1 - split) * 100)}%`}
       tabIndex={0}
       onPointerDown={drag}
       onKeyDown={key}
@@ -104,6 +107,7 @@ function Dashboard({ state, onSetup }: { state: AppState; onSetup: () => void })
   const headroomDown = state.ptyUsesHeadroom && ['restarting', 'failed', 'stopped'].includes(state.services.headroom)
   return (
     <div className="app" style={{ gridTemplateColumns: `${split * 100}% 6px 1fr` }}>
+      <h1 className="sr-only">ClaudeCodeMax</h1>
       <Header state={state} onSetup={onSetup} />
       {headroomDown && (
         <div className="banner" role="alert">
@@ -125,6 +129,16 @@ export function App() {
   const [steps, setSteps] = useState<StepView[]>([])
   const [state, setState] = useState<AppState | null>(null)
   const [updating, setUpdating] = useState(false)
+  const dashRef = useRef<HTMLDivElement>(null)
+
+  // A dialog (Setup or the update overlay) can be open while the dashboard stays mounted
+  // behind it. `inert` keeps that hidden dashboard out of the Tab order and off screen
+  // readers, so it doesn't act as a keyboard trap around the dialog (WCAG 2.4.3).
+  useEffect(() => {
+    if (dashRef.current) dashRef.current.inert = mode !== 'dashboard' || updating
+  }, [mode, updating])
+
+  const focusProjectPicker = () => document.querySelector<HTMLElement>('.header select')?.focus()
 
   const openSetup = async () => {
     setSteps(await window.api.setupCheck())
@@ -159,17 +173,27 @@ export function App() {
     )
   return (
     <>
-      {state && <Dashboard state={state} onSetup={() => void openSetup()} />}
+      <div ref={dashRef} style={{ height: '100%' }}>
+        {state && <Dashboard state={state} onSetup={() => void openSetup()} />}
+      </div>
       {mode === 'setup' && (
         <Setup
           initial={steps}
           onDone={s => {
             setState(s)
             setMode('dashboard')
+            requestAnimationFrame(focusProjectPicker)
           }}
         />
       )}
-      {updating && <UpdateOverlay onClose={() => setUpdating(false)} />}
+      {updating && (
+        <UpdateOverlay
+          onClose={() => {
+            setUpdating(false)
+            requestAnimationFrame(focusProjectPicker)
+          }}
+        />
+      )}
     </>
   )
 }

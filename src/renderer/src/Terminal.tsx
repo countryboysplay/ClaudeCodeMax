@@ -14,7 +14,8 @@ export function Terminal({ project }: { project: string | null }) {
     const t = new XTerm({
       fontFamily: '"Cascadia Mono", Consolas, monospace',
       fontSize: 14,
-      cursorBlink: true,
+      cursorBlink: !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+      screenReaderMode: true,
       theme: currentTheme()
     })
     const fit = new FitAddon()
@@ -24,6 +25,13 @@ export function Terminal({ project }: { project: string | null }) {
     t.attachCustomKeyEventHandler(e => {
       if (e.type === 'keydown' && e.ctrlKey && e.shiftKey && e.code === 'KeyC' && t.hasSelection()) {
         void navigator.clipboard.writeText(t.getSelection())
+        return false
+      }
+      // F6 is the documented escape hatch out of the terminal's keyboard trap (WCAG 2.1.2):
+      // every other key, including Tab, is sent straight to the shell.
+      if (e.type === 'keydown' && e.key === 'F6') {
+        host.current?.querySelector('textarea')?.blur()
+        document.querySelector<HTMLElement>('.divider')?.focus()
         return false
       }
       return true
@@ -63,11 +71,18 @@ export function Terminal({ project }: { project: string | null }) {
 
   return (
     <main className="terminal-area">
-      <div ref={host} className="terminal" aria-label="Claude Code terminal" />
+      <div ref={host} className="terminal" role="group" aria-label="Claude Code terminal. Press F6 to leave it." />
       {ended && (
         <div className="overlay" role="alert">
           <p>Session ended</p>
-          <button onClick={() => void window.api.restartClaude()}>Restart</button>
+          <button
+            onClick={() => {
+              void window.api.restartClaude()
+              host.current?.querySelector('textarea')?.focus()
+            }}
+          >
+            Restart
+          </button>
         </div>
       )}
       {!project && (

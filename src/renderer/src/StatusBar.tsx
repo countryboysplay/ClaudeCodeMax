@@ -8,21 +8,25 @@ export const STATUS_TEXT: Record<Status, string> = {
   failed: 'failed'
 }
 
-function Item({ label, status }: { label: string; status: Status }) {
+function Item({ label, status, suffix }: { label: string; status: Status; suffix?: string }) {
   return (
     <span className={`item status-${status}`}>
       <span className="dot-mark" aria-hidden="true" />
       {label}: {STATUS_TEXT[status]}
+      {suffix}
     </span>
   )
 }
 
 export function StatusBar({ state }: { state: AppState }) {
   return (
-    <footer className="statusbar">
+    <footer className="statusbar" role="status">
       <Item label="Codeburn" status={state.services.codeburn} />
-      {state.headroom && <Item label={`Headroom proxy :${state.ports.headroom}`} status={state.services.headroom} />}
-      <span className="item">Graphify: {state.graphExists ? 'graph ready' : 'no graph yet'}</span>
+      {state.headroom && <Item label="Headroom" status={state.services.headroom} suffix={` on :${state.ports.headroom}`} />}
+      <span className={`item ${state.graphExists ? 'status-up' : ''}`}>
+        <span className="dot-mark" aria-hidden="true" />
+        Graphify: {state.graphExists ? 'graph ready' : 'no graph yet'}
+      </span>
     </footer>
   )
 }

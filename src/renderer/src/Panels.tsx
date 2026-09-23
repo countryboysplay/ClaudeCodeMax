@@ -10,7 +10,7 @@ const TABS = [
 
 function Missing({ tool, onSetup }: { tool: string; onSetup: () => void }) {
   return (
-    <div className="empty muted">
+    <div className="empty muted" role="status">
       <p>{tool} isn't installed.</p>
       <button onClick={onSetup}>Install {tool}</button>
     </div>
@@ -22,7 +22,7 @@ function ServiceView({ name, label, status, url }: { name: string; label: string
   useEffect(() => {
     if (status === 'failed') void window.api.serviceLog(name).then(setLog)
   }, [status, name])
-  if (status === 'up') return <webview src={url} />
+  if (status === 'up') return <webview src={url} title={`${label} panel`} />
   if (status === 'failed')
     return (
       <div className="empty" role="alert">
@@ -50,6 +50,12 @@ export function Panels({ state, onSetup }: { state: AppState; onSetup: () => voi
     void window.api.setLayout({ tab: id })
   }
   const onKey = (e: KeyboardEvent) => {
+    if (e.key === 'Home' || e.key === 'End') {
+      const next = TABS[e.key === 'Home' ? 0 : TABS.length - 1].id
+      select(next)
+      document.getElementById(`tab-${next}`)?.focus()
+      return
+    }
     const d = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0
     if (!d) return
     const i = TABS.findIndex(t => t.id === tab)
@@ -85,12 +91,13 @@ export function Panels({ state, onSetup }: { state: AppState; onSetup: () => voi
       return (
         <div className="empty">
           <p>No graph for this project yet.</p>
+          <p className="muted">Graphify maps your code so Claude can navigate it. Takes about a minute.</p>
           <button className="primary" onClick={() => window.api.ptyWrite('/graphify .\r')}>
             Build graph
           </button>
         </div>
       )
-    return <webview key={graphVersion} src={state.urls.graph!} />
+    return <webview key={graphVersion} src={state.urls.graph!} title="Graphify knowledge graph panel" />
   }
 
   return (
