@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, shell } from 'electron'
+import { autoUpdater } from 'electron-updater'
 import { join } from 'node:path'
 import { existsSync, watchFile, unwatchFile } from 'node:fs'
 import { pathToFileURL } from 'node:url'
@@ -321,6 +322,23 @@ function createWindow(): void {
   else void win.loadFile(join(__dirname, '../renderer/index.html'))
 }
 
+function initUpdater(): void {
+  if (!app.isPackaged) return
+  autoUpdater.on('update-downloaded', async () => {
+    const r = await dialog.showMessageBox(win, {
+      type: 'info',
+      message: 'A new version of ClaudeCodeMax is ready.',
+      buttons: ['Restart to update', 'Later'],
+      defaultId: 0,
+      cancelId: 1
+    })
+    if (r.response === 0) autoUpdater.quitAndInstall()
+  })
+  autoUpdater.checkForUpdates().catch(() => {
+    // offline or no releases yet: try again next launch
+  })
+}
+
 if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
@@ -334,6 +352,7 @@ if (!app.requestSingleInstanceLock()) {
     registerIpc()
     buildMenu()
     createWindow()
+    initUpdater()
   })
   app.on('before-quit', () => {
     stopClaude()
