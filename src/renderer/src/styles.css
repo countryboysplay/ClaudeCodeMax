@@ -83,10 +83,15 @@ button.primary { background: var(--accent); color: var(--accent-text); border-co
 .status-starting .dot-mark, .status-restarting .dot-mark { background: var(--warn); }
 .status-failed .dot-mark { background: var(--bad); }
 
-.setup { position: fixed; inset: 0; overflow: auto; background: var(--bg); padding: 32px max(24px, calc(50% - 360px)); display: grid; gap: 16px; align-content: start; }
-.steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.setup { position: fixed; inset: 0; overflow: auto; background: var(--bg); padding: 32px max(24px, calc(50% - 360px)); display: grid; gap: 16px; align-content: start; grid-auto-rows: max-content; }
+.setup > * { margin: 0; }
+.setup .log { background: var(--surface); }
+.setup > p { max-width: 70ch; }
+.steps { list-style: none; padding: 0; display: grid; gap: 8px; }
 .step { display: grid; grid-template-columns: 1fr auto auto auto; gap: 8px; align-items: center; padding: 10px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); }
 .step.ok .step-status { color: var(--ok); }
 .step.missing .step-status { color: var(--warn); }
+.step.skipped .step-status { color: var(--muted); }
+.step.failed .step-status { color: var(--bad); }
 .step-error { grid-column: 1 / -1; margin: 0; color: var(--bad); white-space: pre-wrap; font: 12px/1.4 'Cascadia Mono', Consolas, monospace; }
-.actions { display: flex; gap: 8px; justify-content: flex-end; }
+.actions { display: flex; gap: 8px; justify-content: flex-end; align-items: center; }

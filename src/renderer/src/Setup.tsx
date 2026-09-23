@@ -1,20 +1,132 @@
+import { useEffect, useRef, useState } from 'react'
 import type { AppState, StepView } from '../../shared/types'
 
-export function Setup({ onDone }: { initial: StepView[]; onDone: (s: AppState) => void }) {
+function useLog(): string[] {
+  const [lines, setLines] = useState<string[]>([])
+  useEffect(() => window.api.onSetupLog(l => setLines(x => [...x.slice(-500), l])), [])
+  return lines
+}
+
+function LogPane({ lines }: { lines: string[] }) {
+  const ref = useRef<HTMLPreElement>(null)
+  useEffect(() => {
+    ref.current?.scrollTo(0, ref.current.scrollHeight)
+  }, [lines])
   return (
-    <div className="setup">
-      <h1>Setup</h1>
-      <button className="primary" onClick={async () => onDone(await window.api.setupDone())}>
-        Continue
-      </button>
+    <pre ref={ref} className="log" role="log" aria-label="Install log">
+      {lines.join('\n') || 'Output from installers appears here.'}
+    </pre>
+  )
+}
+
+const statusText = (s: StepView) => (s.ok ? 'Installed' : s.skipped ? 'Skipped' : s.blockedBy ? `Needs ${s.blockedBy}` : 'Not installed')
+const stepClass = (s: StepView, failed: boolean) => (failed ? 'failed' : s.ok ? 'ok' : s.skipped ? 'skipped' : 'missing')
+
+export function Setup({ initial, onDone }: { initial: StepView[]; onDone: (s: AppState) => void }) {
+  const [steps, setSteps] = useState(initial)
+  const [busy, setBusy] = useState<string | null>(null)
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const log = useLog()
+
+  async function installOne(id: string): Promise<StepView[]> {
+    setBusy(id)
+    const r = await window.api.setupInstall(id)
+    setBusy(null)
+    setSteps(r.steps)
+    setErrors(e => ({ ...e, [id]: r.ok ? '' : (r.error ?? 'Install failed') }))
+    return r.steps
+  }
+
+  async function installAll() {
+    let current = steps
+    for (const { id } of steps) {
+      const s = current.find(x => x.id === id)!
+      if (s.ok || s.skipped || s.blockedBy) continue
+      current = await installOne(id)
+    }
+  }
+
+  async function skip(id: string) {
+    setSteps(await window.api.setupSkip(id))
+  }
+
+  async function finish() {
+    for (const s of steps) if (!s.ok && !s.required && !s.skipped) await window.api.setupSkip(s.id)
+    onDone(await window.api.setupDone())
+  }
+
+  const ready = steps.every(s => s.ok || !s.required)
+  const anythingToInstall = steps.some(s => !s.ok && !s.skipped && !s.blockedBy)
+  const missingRequired = steps.filter(s => s.required && !s.ok).map(s => s.label)
+
+  return (
+    <div className="setup" role="dialog" aria-modal="true" aria-labelledby="setup-title">
+      <h1 id="setup-title">Set up ClaudeCodeMax</h1>
+      <p>
+        ClaudeCodeMax runs Claude Code together with Codeburn, Headroom, Graphify and Ponytail. Required tools must be installed. Optional
+        ones can be skipped and installed later from Tools → Re-run setup.
+      </p>
+      <ul className="steps">
+        {steps.map(s => (
+          <li key={s.id} className={`step ${stepClass(s, !!errors[s.id])}`}>
+            <span>
+              {s.label}
+              {!s.required && <span className="muted"> (optional)</span>}
+            </span>
+            <span className="step-status" aria-live="polite">
+              {busy === s.id ? 'Installing…' : errors[s.id] ? 'Failed' : statusText(s)}
+            </span>
+            {!s.ok && busy !== s.id && !s.blockedBy ? (
+              <button disabled={!!busy} aria-label={`${errors[s.id] ? 'Retry' : 'Install'} ${s.label}`} onClick={() => void installOne(s.id)}>
+                {errors[s.id] ? 'Retry' : 'Install'}
+              </button>
+            ) : (
+              <span />
+            )}
+            {!s.ok && !s.required && !s.skipped ? (
+              <button disabled={!!busy} aria-label={`Skip ${s.label}`} onClick={() => void skip(s.id)}>
+                Skip
+              </button>
+            ) : (
+              <span />
+            )}
+            {errors[s.id] && <pre className="step-error">{errors[s.id]}</pre>}
+          </li>
+        ))}
+      </ul>
+      <div className="actions">
+        <button className={ready ? '' : 'primary'} disabled={!!busy || !anythingToInstall} onClick={() => void installAll()}>
+          Install everything missing
+        </button>
+        <button className={ready ? 'primary' : ''} disabled={!!busy || !ready} onClick={() => void finish()}>
+          Continue
+        </button>
+        {!ready && <span className="muted">Install {missingRequired.join(', ')} to continue</span>}
+      </div>
+      <p className="muted">
+        After setup, open a project folder. Claude Code starts in the terminal. Sign in there the first time.
+      </p>
+      <LogPane lines={log} />
     </div>
   )
 }
 
 export function UpdateOverlay({ onClose }: { onClose: () => void }) {
+  const log = useLog()
+  const [done, setDone] = useState(false)
+  useEffect(() => {
+    void window.api.updateTools().then(() => setDone(true))
+  }, [])
   return (
-    <div className="setup">
-      <button onClick={onClose}>Close</button>
+    <div className="setup" role="dialog" aria-modal="true" aria-labelledby="update-title">
+      <h1 id="update-title">Updating tools</h1>
+      <p>Claude Code and the background services stop during the update and restart when it finishes.</p>
+      <LogPane lines={log} />
+      <div className="actions">
+        <button className="primary" disabled={!done} onClick={onClose}>
+          {done ? 'Close' : 'Updating…'}
+        </button>
+      </div>
     </div>
   )
 }
