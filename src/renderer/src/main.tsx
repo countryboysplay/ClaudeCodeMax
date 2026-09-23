@@ -1,3 +1,7 @@
 import { createRoot } from 'react-dom/client'
+import '@xterm/xterm/css/xterm.css'
+import './styles.css'
+import { App } from './App'
 
-createRoot(document.getElementById('root')!).render(<h1>ClaudeCodeMax</h1>)
+// No StrictMode: its double-invoked effects would start two tool updates and double-subscribe the PTY.
+createRoot(document.getElementById('root')!).render(<App />)
