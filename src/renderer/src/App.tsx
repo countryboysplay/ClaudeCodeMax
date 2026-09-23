@@ -15,7 +15,7 @@ function Toggle(props: { label: string; on: boolean; available: boolean; onChang
   return (
     <button className={`toggle ${props.on ? 'on' : 'off'}`} aria-pressed={props.on} onClick={() => props.onChange(!props.on)}>
       <span className="dot-mark" aria-hidden="true" />
-      {props.label}
+      {props.label} {props.on ? 'on' : 'off'}
     </button>
   )
 }
