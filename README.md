@@ -118,7 +118,7 @@ You don't have to open a second terminal.
 3. **Headroom** (when on) runs `headroom proxy` on `127.0.0.1`. Claude Code starts with `ANTHROPIC_BASE_URL` pointed at the proxy. Headroom's dashboard is the **Savings** tab. Turning Headroom on or off restarts the Claude session, because Claude Code only reads that variable when it starts.
 4. **Graphify** has nothing running in the background. **Build graph** asks Claude to run `/graphify .`, which writes `graphify-out/graph.html` in your project. The **Graph** tab shows that file.
 5. **Ponytail** runs inside Claude Code as a plugin. The header toggle turns it on or off with `claude plugin enable|disable`. The two buttons type `/ponytail-review` and `/ponytail-audit` into the session.
-6. **Memory** lives in `%USERPROFILE%\.claudecodemax\memory`, a git repo of Markdown files: global memories plus one folder per project. Sessions the app launches get Claude Code hooks (passed with `--settings`, so your `~/.claude/settings.json` is never touched). When a session starts, the hook adds the global and project memory indexes to Claude's context. When a session ends or compacts, the hook queues its transcript. The app then runs `claude` in the background to distill the new part of the transcript into memory files, checks the result, commits it, and rolls back any bad run. Memories whose source files have changed get re-checked, and memories unused for 90 days are archived. On first run, it imports Claude Code's own auto-memory.
+6. **Memory** runs through Claude Code hooks on the sessions the app launches. When a session starts, Claude gets an index of what it remembers. When a session ends, the app distills the session into memory in the background. See [Memory](#memory).
 
 If a default port is taken, the app picks a free one and passes it to both the tool and Claude.
 
@@ -161,6 +161,76 @@ If a default port is taken, the app picks a free one and passes it to both the t
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> | Copies the selected text in the terminal. |
 
 When Claude exits, the terminal shows **Session ended** with a **Restart** button. If the Headroom proxy goes down while Claude is using it, a banner lets you restart Headroom or relaunch Claude without it. The app never switches Claude off the proxy without asking.
+
+## Memory
+
+Claude Code forgets everything when a session ends. ClaudeCodeMax gives it a memory that lasts: it learns from each session and gives Claude an index of what it knows at the start of the next one.
+
+### Where it lives
+
+Everything is plain Markdown in a local git repo:
+
+```
+%USERPROFILE%\.claudecodemax\memory\
+  INDEX.md                    global index, given to every session
+  user.md                     who you are and how you work
+  topics\*.md                 global memories
+  projects\<project>\
+    INDEX.md                  this project's index
+    project.json              the project folder it belongs to
+    topics\*.md               memories about this project
+  archive\                    memories retired after 90 days without use
+```
+
+Each memory is a short Markdown note with a header like this:
+
+```markdown
+---
+name: api-retries
+type: project
+summary: The API client retries 3 times with backoff; don't add another retry layer
+sources: [src/api/client.ts@4f2a91c]
+verified: 2026-09-24
+used: 2026-09-24
+uses: 3
+stale: false
+pinned: false
+---
+The retry logic lives in client.ts...
+```
+
+There are four types: `user` and `feedback` (about you and how you like to work) and `project` and `reference` (about the code). `user` and `feedback` memories always move to the global tier, because they apply to every project.
+
+### What happens during a session
+
+1. **Session start.** The hook gives Claude the global index and the open project's index: one line per memory, with its name, summary and path. Claude reads the full memory file only when a line is relevant. Claude Code's built-in auto-memory is turned off in these sessions, so the two don't compete.
+2. **Session end or compaction.** The hook adds the transcript to a queue.
+3. **Distilling.** The app runs `claude -p` in the background (Haiku by default) on the part of the transcript it hasn't seen yet. Slices under about 2,000 tokens are skipped. The distiller gets file tools only, with no shell. Then the app checks its output: a file outside the memory layout, a malformed header, a note over 200 lines or anything that looks like a secret rolls back the whole run. A good run is committed to git.
+4. **Source tracking.** Project memories record the files they describe and the git commit they saw. When one of those files changes, the memory is marked `(may be stale)` in the index and queued for a re-check. The re-check keeps the memory, rewrites it or deletes it.
+
+Sessions you run outside the app aren't given the index, but their transcripts are picked up and distilled the next time the app starts. On first run, the app imports your existing Claude Code auto-memory instead of re-reading your whole session history.
+
+### What makes the index
+
+The index holds 60 lines: 24 global and 36 for the project. Pinned memories come first, then `user` and `feedback`, then the most recently used. A memory that hasn't been used in 30 days drops out of the index, and after 90 days it moves to `archive\`. Pinned, `user` and `feedback` memories never drop out.
+
+### Editing it yourself
+
+**Memory → Open memory folder** opens it in Explorer. You can edit, delete or add notes by hand. The app commits your edits before each distill, so a rolled-back run doesn't undo them. The one exception is a distill cut off by a crash or quit: the app rolls it back at the next start, and that rollback also undoes hand edits made in between. Set `pinned: true` to keep a memory in the index permanently. `git log` in the folder shows every change, and you can undo any of them with git.
+
+### Settings
+
+With the app closed, edit `memory` in `%APPDATA%\ClaudeCodeMax\settings.json`:
+
+| Setting | Default | What it does |
+|---|---|---|
+| `model` | `claude-haiku-4-5-20251001` | The model the distiller and re-checks use |
+| `dailyCap` | `30` | Maximum distill and re-check runs per day (0–1000). Queued jobs wait for the next day. `0` stops distilling. |
+| `indexCap` | `60` | Total index lines per session (10–200), split 40% global and 60% project |
+
+There's no on/off switch yet. `dailyCap: 0` stops new memories from being made, but sessions still get the existing index.
+
+If a distill fails, the app stops distilling until its next start. The reason is in the Memory tab's **Distiller log**.
 
 ## Privacy and security
 
