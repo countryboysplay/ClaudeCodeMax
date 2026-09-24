@@ -1,5 +1,5 @@
 import { existsSync, readFileSync, readdirSync, rmSync, statSync, unwatchFile, watchFile } from 'node:fs'
-import { basename, dirname, join } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 import { runShell, type Runner } from '../run'
 import { projectPath, readMemory, slugFor, today, writeMemory, writeProject } from './files'
 import { importAutoMemory } from './import'
@@ -176,7 +176,7 @@ export class MemoryRunner {
     const dir = projectPath(root, basename(dirname(dirname(file)))) // projects/<slug>/topics/<name>.md
     if (!m || !dir) return true
     const sources = m.meta.sources.map(s => {
-      const f = join(dir, splitSource(s)[0])
+      const f = resolve(dir, splitSource(s)[0])
       return { file: splitSource(s)[0], text: existsSync(f) ? readFileSync(f, 'utf8').slice(0, 20_000) : null }
     })
     const r = await this.run(this.command(false), l => this.say(l), { cwd: root, env: this.env(), input: recheckPrompt(m, sources), timeoutMs: TIMEOUT_MS })

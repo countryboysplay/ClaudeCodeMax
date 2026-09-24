@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { readMemory, writeMemory, writeProject, type Meta } from '../src/main/memory/files'
@@ -99,5 +99,29 @@ describe('sources', () => {
     writeMemory({ file: f, meta: meta({ sources: ['missing.ts'] }), body: '' })
     expect(await checkSources(root)).toEqual([])
     expect(readMemory(f)!.meta.stale).toBe(false)
+  })
+  it('stamps an absolute source path and does not flag it stale when unchanged', async () => {
+    const proj = await projectRepo()
+    const root = fresh('ccm-m-')
+    writeProject(root, 'P', proj)
+    const f = join(root, 'projects', 'P', 'topics', 'a.md')
+    writeMemory({ file: f, meta: meta({ sources: [join(proj, 'app.ts')] }), body: '' })
+    await stampSources(root, 'P', proj)
+    expect(readMemory(f)!.meta.sources[0]).toMatch(/^app\.ts@[0-9a-f]{7,}$/)
+    expect(await checkSources(root)).toEqual([])
+  })
+  it('stamps a backslash relative source path', async () => {
+    const proj = fresh('ccm-proj-')
+    await git(proj, 'init', '-q')
+    mkdirSync(join(proj, 'src'), { recursive: true })
+    writeFileSync(join(proj, 'src', 'app.ts'), 'v1')
+    await gitc(proj, 'add', '-A')
+    await gitc(proj, 'commit', '-q', '-m', 'v1')
+    const root = fresh('ccm-m-')
+    writeProject(root, 'P', proj)
+    const f = join(root, 'projects', 'P', 'topics', 'a.md')
+    writeMemory({ file: f, meta: meta({ sources: ['src\\app.ts'] }), body: '' })
+    await stampSources(root, 'P', proj)
+    expect(readMemory(f)!.meta.sources[0]).toMatch(/^src\/app\.ts@[0-9a-f]{7,}$/)
   })
 })

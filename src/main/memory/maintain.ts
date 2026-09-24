@@ -1,5 +1,5 @@
 import { existsSync, mkdirSync, renameSync, rmSync } from 'node:fs'
-import { basename, dirname, isAbsolute, join, relative } from 'node:path'
+import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { allMemories, daysBetween, listMemories, projectPath, projectSlugs, readMemory, writeMemory } from './files'
 import { isExempt } from './indexes'
 import { git } from './store'
@@ -70,11 +70,28 @@ export const refreshSources = (projectDir: string, sources: string[]): Promise<s
     })
   )
 
+// The distiller writes whatever path shape Haiku saw in the transcript (often absolute, sometimes
+// backslashed). Normalise before stamping so checkSources can compare like with like.
+export function normalizeSource(projectDir: string, file: string): string {
+  if (isAbsolute(file)) {
+    const rel = relative(projectDir, file)
+    if (!rel.startsWith('..') && !isAbsolute(rel)) return rel.replace(/\\/g, '/')
+    return file.replace(/\\/g, '/')
+  }
+  return file.replace(/\\/g, '/')
+}
+
 // The distiller has no shell, so it records paths and we add the commit it saw.
 export async function stampSources(root: string, slug: string, projectDir: string): Promise<void> {
   for (const m of listMemories(join(root, 'projects', slug))) {
     if (m.meta.sources.every(s => splitSource(s)[1])) continue
-    m.meta.sources = await Promise.all(m.meta.sources.map(async s => (splitSource(s)[1] ? s : (await refreshSources(projectDir, [s]))[0])))
+    m.meta.sources = await Promise.all(
+      m.meta.sources.map(async s => {
+        if (splitSource(s)[1]) return s
+        const file = normalizeSource(projectDir, splitSource(s)[0])
+        return (await refreshSources(projectDir, [file]))[0]
+      })
+    )
     writeMemory(m)
   }
 }
@@ -89,7 +106,7 @@ export async function checkSources(root: string): Promise<string[]> {
       for (const src of m.meta.sources) {
         const [file, hash] = splitSource(src)
         if (!hash) continue // unstamped: project isn't git-tracked, nothing to compare
-        const now = existsSync(join(dir, file)) ? await lastHash(dir, file) : null
+        const now = existsSync(resolve(dir, file)) ? await lastHash(dir, file) : null
         const changed = now === null || (!!now && !now.startsWith(hash) && !hash.startsWith(now))
         if (!changed) continue
         m.meta.stale = true
