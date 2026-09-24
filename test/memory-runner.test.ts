@@ -34,8 +34,7 @@ function world() {
   return { base, root: join(base, 'memory'), project, transcript, say, make, calls }
 }
 
-// each test spawns the distiller and several git processes; 5s default is tight on Windows
-describe('MemoryRunner', { timeout: 30000 }, () => {
+describe('MemoryRunner', () => {
   it('first launch imports auto-memory and does not queue old transcripts', async () => {
     const w = world()
     w.say('x'.repeat(9000))
