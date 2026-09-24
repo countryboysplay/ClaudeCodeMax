@@ -13,7 +13,6 @@ function on<T extends unknown[]>(channel: string) {
 
 const api = {
   init: (): Promise<InitResult> => ipcRenderer.invoke('app:init'),
-  getState: (): Promise<AppState> => ipcRenderer.invoke('state:get'),
   pickProject: (): Promise<void> => ipcRenderer.invoke('project:pick'),
   openProject: (dir: string): Promise<boolean> => ipcRenderer.invoke('project:open', dir),
   ptyWrite: (data: string) => ipcRenderer.send('pty:write', data),

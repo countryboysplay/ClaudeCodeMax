@@ -196,7 +196,6 @@ function registerIpc(): void {
     await startDashboard()
     return { mode: 'dashboard', state: state() }
   })
-  ipcMain.handle('state:get', () => state())
   ipcMain.handle('project:pick', () => pickProject())
   ipcMain.handle('project:open', (_e, dir: unknown) => typeof dir === 'string' && openProject(dir))
   ipcMain.on('pty:write', (_e, data: unknown) => {
