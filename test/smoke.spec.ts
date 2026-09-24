@@ -1,5 +1,5 @@
 import { test, expect, _electron as electron } from '@playwright/test'
-import { mkdtempSync, readdirSync } from 'node:fs'
+import { existsSync, mkdtempSync, readdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
@@ -17,6 +17,7 @@ test('runs Claude in the project, serves the Cost panel, and leaves no orphans',
   const pids = mkdtempSync(join(tmpdir(), 'ccm-pids-'))
   const project = mkdtempSync(join(tmpdir(), 'ccm project ')) // space on purpose
   const stub = `node "${join(fixtures, 'stub-server.mjs')}" {port}`
+  const memory = join(mkdtempSync(join(tmpdir(), 'ccm-mem-')), 'memory')
   const app = await electron.launch({
     args: ['.'],
     env: {
@@ -27,7 +28,10 @@ test('runs Claude in the project, serves the Cost panel, and leaves no orphans',
       CCM_TEST_PIDS: pids,
       CCM_CMD_CLAUDE: join(fixtures, 'fake-claude.cmd'),
       CCM_CMD_CODEBURN: stub,
-      CCM_CMD_HEADROOM: stub
+      CCM_CMD_HEADROOM: stub,
+      CCM_MEMORY_DIR: memory,
+      CCM_CLAUDE_PROJECTS: mkdtempSync(join(tmpdir(), 'ccm-cp-')),
+      CCM_CMD_DISTILLER: `node "${join(fixtures, 'fake-distiller.mjs')}"`
     }
   })
   const win = await app.firstWindow()
@@ -35,6 +39,9 @@ test('runs Claude in the project, serves the Cost panel, and leaves no orphans',
 
   await expect(term).toContainText('FAKE CLAUDE READY', { timeout: 30_000 })
   await expect(term).toContainText('ANTHROPIC_BASE_URL=http://127.0.0.1:')
+  await expect(term).toContainText('ARGS=--settings')
+  await expect(term).toContainText('AUTO_MEMORY_OFF=1')
+  await expect.poll(() => existsSync(join(memory, '.git')), { timeout: 15_000 }).toBe(true)
   await expect(win.getByText('Codeburn: running')).toBeVisible({ timeout: 30_000 })
 
   await win.getByRole('tab', { name: 'Cost' }).click()

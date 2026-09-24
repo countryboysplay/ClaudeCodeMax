@@ -1,7 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, shell } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import { join } from 'node:path'
-import { existsSync, watchFile, unwatchFile } from 'node:fs'
+import { existsSync, watchFile, unwatchFile, writeFileSync } from 'node:fs'
 import { pathToFileURL } from 'node:url'
 import { spawn as spawnPty, type IPty } from '@lydell/node-pty'
 import { refreshPath } from './path'
@@ -11,6 +11,8 @@ import { loadSettings, saveSettings, addRecent, type Settings } from './settings
 import { guardWebviews } from './guard'
 import { Service } from './services'
 import { STEPS, check, install, blockedBy, needsWizard } from './setup'
+import { MemoryRunner } from './memory/runner'
+import { claudeProjectsDir, memDir } from './memory/files'
 import type { AppState, InitResult, InstallResult, ServiceName, StepView } from '../shared/types'
 
 const REPO_URL = 'https://github.com/countryboysplay/ClaudeCodeMax'
@@ -32,6 +34,7 @@ let ptyUsesHeadroom = false
 let size = { cols: 120, rows: 30 }
 let installed: Record<string, boolean> = {}
 let services: Record<ServiceName, Service> | null = null
+let memory: MemoryRunner | null = null
 const ports: Record<ServiceName, number> = { codeburn: 4747, headroom: 8787 }
 let quitting = false
 
@@ -41,6 +44,17 @@ const send = (channel: string, ...args: unknown[]) => {
   if (win && !win.isDestroyed()) win.webContents.send(channel, ...args)
 }
 const graphFile = () => (project ? join(project, 'graphify-out', 'graph.html') : null)
+
+const hookScript = () =>
+  (app.isPackaged ? join(process.resourcesPath, 'memory-hook.mjs') : join(app.getAppPath(), 'resources', 'memory-hook.mjs')).replace(/\\/g, '/')
+
+// Memory hooks for app-launched sessions only: passed with --settings, so ~/.claude/settings.json is never touched.
+function writeHooks(): string {
+  const hook = (event: string) => [{ hooks: [{ type: 'command', command: `node "${hookScript()}" ${event}` }] }]
+  const file = join(app.getPath('userData'), 'ccm-hooks.json')
+  writeFileSync(file, JSON.stringify({ hooks: { SessionStart: hook('start'), SessionEnd: hook('enqueue'), PreCompact: hook('enqueue') } }, null, 2))
+  return file
+}
 
 function state(): AppState {
   const g = graphFile()
@@ -80,8 +94,11 @@ function launchClaude(): void {
   const env: Record<string, string> = { ...(process.env as Record<string, string>) }
   ptyUsesHeadroom = settings.headroom && installed.headroom !== false
   if (ptyUsesHeadroom) env.ANTHROPIC_BASE_URL = `http://127.0.0.1:${ports.headroom}`
+  env.CLAUDE_CODE_DISABLE_AUTO_MEMORY = '1'
+  env.CCM_MEMORY_DIR = memDir()
   try {
-    const p = spawnPty(process.env.ComSpec ?? 'cmd.exe', ['/c', override('CLAUDE', 'claude')], {
+    // A string is passed to cmd.exe verbatim; /s keeps the inner quotes intact when paths contain spaces.
+    const p = spawnPty(process.env.ComSpec ?? 'cmd.exe', `/s /c ""${override('CLAUDE', 'claude')}" --settings "${writeHooks()}""`, {
       name: 'xterm-256color',
       cwd: project,
       env,
@@ -157,6 +174,8 @@ async function startDashboard(): Promise<void> {
   }
   for (const s of Object.values(services)) s.on('status', pushState)
   syncServices()
+  memory = new MemoryRunner({ root: memDir(), claudeProjects: claudeProjectsDir(), command: override('DISTILLER', 'claude'), ...settings.memory })
+  void memory.init()
   const first = process.env.CCM_PROJECT ?? settings.recent.find(d => existsSync(d))
   if (first) openProject(first)
   else pushState()
@@ -228,7 +247,7 @@ function registerIpc(): void {
     launchClaude()
   })
   ipcMain.handle('service:restart', (_e, n: unknown) => svc(n)?.restart())
-  ipcMain.handle('service:log', (_e, n: unknown) => svc(n)?.log ?? [])
+  ipcMain.handle('service:log', (_e, n: unknown) => (n === 'memory' ? (memory?.log ?? []) : (svc(n)?.log ?? [])))
   ipcMain.handle('layout:set', (_e, l: { split?: unknown; tab?: unknown } | undefined) => {
     if (typeof l?.split === 'number' && l.split >= 0.2 && l.split <= 0.8) settings.split = l.split
     if (typeof l?.tab === 'string') settings.tab = l.tab
@@ -366,6 +385,7 @@ if (!app.requestSingleInstanceLock()) {
     quitting = true
     stopClaude()
     if (services) for (const s of Object.values(services)) s.stop()
+    memory?.stop()
     killAll()
   })
   app.on('window-all-closed', () => app.quit())

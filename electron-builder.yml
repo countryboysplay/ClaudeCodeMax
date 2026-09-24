@@ -7,6 +7,9 @@ files:
   - package.json
 asarUnpack:
   - node_modules/@lydell/**
+extraResources:
+  - from: resources/memory-hook.mjs
+    to: memory-hook.mjs
 win:
   target: nsis
   artifactName: ClaudeCodeMax-Setup-${version}.${ext}
