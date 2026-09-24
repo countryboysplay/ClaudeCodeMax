@@ -17,6 +17,11 @@ jobs:
       - run: npm run typecheck
       - run: npm test
       - run: npm run smoke
+      # electron-builder uploads assets in parallel and each upload creates the release if it's
+      # missing, which races into duplicate drafts. Create the draft first so they all find it.
+      - run: gh release create "$env:GITHUB_REF_NAME" --draft --verify-tag --title "ClaudeCodeMax $($env:GITHUB_REF_NAME.TrimStart('v'))"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: npm run release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
