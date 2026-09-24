@@ -55,6 +55,23 @@ describe('loadSettings', () => {
   })
 })
 
+describe('memory settings', () => {
+  it('defaults when missing', () =>
+    expect(loadSettings(join(dir, 'none.json')).memory).toEqual({ model: 'claude-haiku-4-5-20251001', dailyCap: 30, indexCap: 60 }))
+  it('keeps valid values and fills the rest', () => {
+    const f = join(dir, 'mem-partial.json')
+    writeFileSync(f, JSON.stringify({ memory: { dailyCap: 5 } }))
+    expect(loadSettings(f).memory).toEqual({ model: 'claude-haiku-4-5-20251001', dailyCap: 5, indexCap: 60 })
+  })
+  it('repairs wrong types, out-of-range caps and unsafe model names', () => {
+    const f = join(dir, 'mem-bad.json')
+    writeFileSync(f, JSON.stringify({ memory: { model: 'haiku & del /q *', dailyCap: -1, indexCap: 2.5 } }))
+    expect(loadSettings(f).memory).toEqual(defaults().memory)
+    writeFileSync(f, JSON.stringify({ memory: 'nope' }))
+    expect(loadSettings(f).memory).toEqual(defaults().memory)
+  })
+})
+
 describe('addRecent', () => {
   it('moves an existing entry to the front, case-insensitively', () =>
     expect(addRecent(['C:\\A', 'C:\\B'], 'c:\\b')).toEqual(['c:\\b', 'C:\\A']))

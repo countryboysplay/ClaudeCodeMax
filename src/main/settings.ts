@@ -1,6 +1,12 @@
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 
+export interface MemorySettings {
+  model: string
+  dailyCap: number
+  indexCap: number
+}
+
 export interface Settings {
   recent: string[]
   headroom: boolean
@@ -8,9 +14,18 @@ export interface Settings {
   skipped: string[]
   split: number
   tab: string
+  memory: MemorySettings
 }
 
-export const defaults = (): Settings => ({ recent: [], headroom: true, ponytail: true, skipped: [], split: 0.6, tab: 'cost' })
+export const defaults = (): Settings => ({
+  recent: [],
+  headroom: true,
+  ponytail: true,
+  skipped: [],
+  split: 0.6,
+  tab: 'cost',
+  memory: { model: 'claude-haiku-4-5-20251001', dailyCap: 30, indexCap: 60 }
+})
 
 export function loadSettings(file: string): Settings {
   let parsed: Partial<Settings> = {}
@@ -27,6 +42,16 @@ export function loadSettings(file: string): Settings {
   if (typeof s.headroom !== 'boolean') s.headroom = defaults().headroom
   if (typeof s.ponytail !== 'boolean') s.ponytail = defaults().ponytail
   if (typeof s.tab !== 'string') s.tab = defaults().tab
+  const m: Partial<MemorySettings> = s.memory && typeof s.memory === 'object' && !Array.isArray(s.memory) ? s.memory : {}
+  const d = defaults().memory
+  const int = (v: unknown, lo: number, hi: number, dflt: number) =>
+    Number.isInteger(v) && (v as number) >= lo && (v as number) <= hi ? (v as number) : dflt
+  s.memory = {
+    // The model name goes into a shell command line, so only plain model ids are allowed.
+    model: typeof m.model === 'string' && /^[\w.:-]+$/.test(m.model) ? m.model : d.model,
+    dailyCap: int(m.dailyCap, 0, 1000, d.dailyCap),
+    indexCap: int(m.indexCap, 10, 200, d.indexCap)
+  }
   return s
 }
 
