@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { readMemory, slugFor, writeMemory, writeProject } from '../src/main/memory/files'
 import { MemoryRunner } from '../src/main/memory/runner'
-import { enqueue, git, readQueue, readState } from '../src/main/memory/store'
+import { enqueue, git, readQueue, readState, writeState } from '../src/main/memory/store'
 
 const DAY = '2026-09-24'
 const fake = `node "${resolve('test/fixtures/fake-distiller.mjs')}"`
@@ -125,6 +125,22 @@ describe('MemoryRunner', () => {
     const again = w.make()
     await again.init()
     expect(w.calls()).toEqual(['distill'])
+  })
+
+  it('rolls back an unfinished distill left over from a crash or quit', async () => {
+    const w = world()
+    const r = w.make()
+    await r.init()
+    const junk = join(w.root, 'topics', 'junk.md')
+    writeFileSync(junk, 'junk')
+    const s = readState(w.root)
+    s.inFlight = 'x'
+    writeState(w.root, s)
+    const again = w.make()
+    await again.init()
+    expect(existsSync(junk)).toBe(false)
+    expect((await git(w.root, 'status', '--porcelain')).trim()).toBe('')
+    expect(readState(w.root).inFlight).toBe(null)
   })
 
   it('re-checks a memory whose source changed', async () => {

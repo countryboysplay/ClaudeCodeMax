@@ -55,6 +55,14 @@ export class MemoryRunner {
       return false
     }
     const s = readState(root)
+    if (s.inFlight) {
+      // ponytail: this also reverts any hand edits made while the app was closed mid-distill, not just
+      // the distiller's own output. The marker only survives a crash/kill/quit, so that's an accepted
+      // narrow window, not a routine cost.
+      await rollback(root)
+      s.inFlight = null
+      writeState(root, s)
+    }
     if (!s.imported) {
       const n = importAutoMemory(root, this.o.claudeProjects, slugFor(root))
       // History before the first launch arrives through the import, not by re-distilling every transcript.
@@ -120,6 +128,12 @@ export class MemoryRunner {
     writeState(this.o.root, s)
   }
 
+  private setInFlight(root: string, key: string | null): void {
+    const s = readState(root)
+    s.inFlight = key
+    writeState(root, s)
+  }
+
   private command(tools: boolean): string {
     const { command, model } = this.o
     return `${command} -p --model ${model} --strict-mcp-config${tools ? ' --allowedTools Read,Write,Edit,Glob,Grep --permission-mode acceptEdits' : ''}`
@@ -146,10 +160,12 @@ export class MemoryRunner {
         projectDir: `projects/${slug}`,
         day
       })
+      this.setInFlight(root, key)
       const r = await this.run(this.command(true), l => this.say(l), { cwd: root, env: this.env(), input, timeoutMs: TIMEOUT_MS })
       this.countRun()
       if (r.code !== 0) {
         await rollback(root)
+        this.setInFlight(root, null)
         this.say(`Distiller exited with code ${r.code}; will retry at next start.`)
         return false
       }
@@ -163,6 +179,7 @@ export class MemoryRunner {
         rebuildIndexes(root, this.o.indexCap, day)
         await commit(root, `Distill ${basename(transcript, '.jsonl')}`)
       }
+      this.setInFlight(root, null)
     }
     const s = readState(root)
     s.offsets[key] = slice.end
