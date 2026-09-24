@@ -34,7 +34,8 @@ function world() {
   return { base, root: join(base, 'memory'), project, transcript, say, make, calls }
 }
 
-describe('MemoryRunner', () => {
+// each test spawns the distiller and several git processes; 5s default is tight on Windows
+describe('MemoryRunner', { timeout: 30000 }, () => {
   it('first launch imports auto-memory and does not queue old transcripts', async () => {
     const w = world()
     w.say('x'.repeat(9000))
@@ -118,7 +119,9 @@ describe('MemoryRunner', () => {
 
   it('catches up on transcripts that grew while the app was closed', async () => {
     const w = world()
-    await w.make().init()
+    const first = w.make()
+    await first.init()
+    first.stop() // the app closes
     w.say('x'.repeat(9000))
     const again = w.make()
     await again.init()
