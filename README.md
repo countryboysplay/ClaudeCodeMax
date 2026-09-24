@@ -36,6 +36,8 @@ ClaudeCodeMax puts all of it in one window. It installs four community tools for
 - **[Headroom](https://github.com/headroomlabs-ai/headroom)** compresses context through a local proxy, so you send fewer tokens.
 - **[Ponytail](https://github.com/dietrichgebert/ponytail)** is a Claude Code plugin that keeps Claude's code minimal.
 
+It also gives Claude a **persistent memory** that carries what it learned from one session into the next.
+
 You don't have to open a second terminal.
 
 ## Features
@@ -90,6 +92,9 @@ You don't have to open a second terminal.
     <td width="33%" valign="top"><b>🧹 Clean exit</b><br>When you quit, the app ends every process it started, including Claude Code.</td>
     <td width="33%" valign="top"><b>🔒 Locked-down panels</b><br>Panels only load <code>localhost</code> pages and your project's graph file. Other links open in your browser.</td>
   </tr>
+  <tr>
+    <td width="33%" valign="top"><b>🧠 Persistent memory</b><br>After each session, a background distiller saves what's worth keeping. The next session starts with an index of it. The <b>Memory</b> tab shows what it's doing.</td>
+  </tr>
 </table>
 
 ## How it works
@@ -98,7 +103,7 @@ You don't have to open a second terminal.
 ┌──────────────────────────────────────────────────────────────────────────┐
 │ Project: C:\code\myapp  v     Headroom: on   Ponytail: on   review audit │
 ├────────────────────────────────────┬─────────────────────────────────────┤
-│                                    │  [ Cost ]  [ Graph ]  [ Savings ]   │
+│                                    │  [Cost] [Graph] [Savings] [Memory]  │
 │   Claude Code terminal             │                                     │
 │   (xterm.js + node-pty, runs       │   the selected tool's own web UI    │
 │    `claude` in your project)       │   (an embedded <webview>)           │
@@ -113,6 +118,7 @@ You don't have to open a second terminal.
 3. **Headroom** (when on) runs `headroom proxy` on `127.0.0.1`. Claude Code starts with `ANTHROPIC_BASE_URL` pointed at the proxy. Headroom's dashboard is the **Savings** tab. Turning Headroom on or off restarts the Claude session, because Claude Code only reads that variable when it starts.
 4. **Graphify** has nothing running in the background. **Build graph** asks Claude to run `/graphify .`, which writes `graphify-out/graph.html` in your project. The **Graph** tab shows that file.
 5. **Ponytail** runs inside Claude Code as a plugin. The header toggle turns it on or off with `claude plugin enable|disable`. The two buttons type `/ponytail-review` and `/ponytail-audit` into the session.
+6. **Memory** lives in `%USERPROFILE%\.claudecodemax\memory`, a git repo of Markdown files: global memories plus one folder per project. Sessions the app launches get Claude Code hooks (passed with `--settings`, so your `~/.claude/settings.json` is never touched). When a session starts, the hook adds the global and project memory indexes to Claude's context. When a session ends or compacts, the hook queues its transcript. The app then runs `claude` in the background to distill the new part of the transcript into memory files, checks the result, commits it, and rolls back any bad run. Memories whose source files have changed get re-checked, and memories unused for 90 days are archived. On first run, it imports Claude Code's own auto-memory.
 
 If a default port is taken, the app picks a free one and passes it to both the tool and Claude.
 
@@ -149,6 +155,7 @@ If a default port is taken, the app picks a free one and passes it to both the t
 | **Divider** | Drag it, or focus it and use the arrow keys, to resize the terminal and the panels. The app remembers the split and the last tab you used. |
 | **Tools → Check for tool updates** | Stops the tools, runs `npm update -g codeburn`, `uv tool upgrade headroom-ai graphifyy`, `claude update` and `claude plugin update ponytail@ponytail`, then starts everything again. The output is shown as it runs. |
 | **Tools → Re-run setup** | Opens the setup wizard again, for example to install a tool you skipped. |
+| **Memory tab** | Shows how many sessions are waiting to be distilled, recent memory changes and the distiller's log. **Open memory folder** opens it in Explorer. |
 | **Help → Third-party licenses** | Opens [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). |
 | <kbd>F6</kbd> | The terminal sends every key to Claude, including <kbd>Tab</kbd>. Press <kbd>F6</kbd> to move keyboard focus out of the terminal. |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> | Copies the selected text in the terminal. |
@@ -161,7 +168,8 @@ When Claude exits, the terminal shows **Session ended** with a **Restart** butto
 - **The app sends nothing about you.** It has no telemetry or analytics. Its only network request is the update check against this repo's GitHub Releases, when you run the installed app.
 - **The tools behave as their authors designed.** Claude Code talks to Anthropic, and with Headroom on it goes through the local proxy first. Codeburn reads your local session logs. Headroom's own telemetry is off by default. Graphify's `graph.html` loads its graph library from a CDN (unpkg.com). Each tool's README explains what it does.
 - **The panels are sandboxed.** The UI runs with `contextIsolation`, `sandbox` and no Node integration. A `will-attach-webview` guard removes preloads and only allows `http://localhost:*`, `http://127.0.0.1:*` and files inside `<project>/graphify-out/`. Any other link opens in your browser, and only if it's `https:`.
-- **The app stores very little.** `%APPDATA%\ClaudeCodeMax\settings.json` holds your recent projects, the two toggles, skipped tools and the layout. That's all.
+- **Memory stays on your PC, but distilling it uses Claude.** The distiller sends session transcripts to Claude through your own Claude Code sign-in (by default with Haiku, at most 30 runs a day), and the memory files it writes stay in `%USERPROFILE%\.claudecodemax\memory`. Distiller output that looks like it contains a secret is rejected and rolled back.
+- **The app stores very little else.** `%APPDATA%\ClaudeCodeMax\settings.json` holds your recent projects, the two toggles, skipped tools, the layout and the memory settings (`memory.model`, `memory.dailyCap`, `memory.indexCap`). That's all.
 
 ## Develop
 
@@ -176,16 +184,18 @@ npm run smoke       # end-to-end test (Playwright + Electron) with a fake claude
 npm run dist        # build dist/ClaudeCodeMax-Setup-<version>.exe
 ```
 
-Useful environment variables for testing: `CCM_USER_DATA` (use a different settings folder), `CCM_PROJECT` (open this folder on launch), `CCM_FORCE_SETUP=1` / `CCM_SKIP_SETUP=1` (always or never show the wizard), and `CCM_CMD_CLAUDE`, `CCM_CMD_CODEBURN`, `CCM_CMD_HEADROOM` (swap in other commands; in the two service commands, `{port}` is replaced with the chosen port).
+Useful environment variables for testing: `CCM_USER_DATA` (use a different settings folder), `CCM_PROJECT` (open this folder on launch), `CCM_FORCE_SETUP=1` / `CCM_SKIP_SETUP=1` (always or never show the wizard), and `CCM_CMD_CLAUDE`, `CCM_CMD_CODEBURN`, `CCM_CMD_HEADROOM` (swap in other commands; in the two service commands, `{port}` is replaced with the chosen port). For memory: `CCM_MEMORY_DIR` (use a different memory folder), `CCM_CLAUDE_PROJECTS` (read transcripts from a different folder) and `CCM_CMD_DISTILLER` (swap in another command for the distiller).
 
 <details>
 <summary><b>Project layout</b></summary>
 
 ```
 src/main/       Electron main process: window, services, PTY, setup wizard, PATH refresh, webview guard
+src/main/memory/ persistent memory: store, transcript slicing, indexes, distiller runner, validation
 src/preload/    typed bridge between the main process and the UI
 src/renderer/   React UI: terminal, panels, setup wizard, status bar
 src/shared/     types shared by main and renderer
+resources/      memory-hook.mjs, the Claude Code hook bundled with the app
 test/           Vitest unit tests + Playwright smoke test and fixtures
 ```
 </details>
