@@ -1,6 +1,6 @@
 import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs'
 import { join } from 'node:path'
-import { TYPES, writeMemory, type MemoryType } from './files'
+import { TYPES, today, writeMemory, type MemoryType } from './files'
 
 // Copies Claude Code's auto-memory into the project tier. Sources are read, never changed.
 export function importAutoMemory(root: string, claudeProjects: string, skipSlug: string): number {
@@ -28,7 +28,8 @@ export function importAutoMemory(root: string, claudeProjects: string, skipSlug:
           summary: field('description') ?? body.split('\n').find(l => l.trim())?.trim().slice(0, 100) ?? name,
           sources: [],
           verified: day,
-          used: day,
+          // Imports should get the normal 30-day grace period, not decay based on the source file's age.
+          used: today(),
           uses: 0,
           stale: false,
           pinned: false
