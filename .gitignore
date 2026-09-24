@@ -5,3 +5,4 @@ screens/
 test-results/
 playwright-report/
 .claude/settings.local.json
+graphify-out/
