@@ -1,13 +1,26 @@
 import { spawn, execFileSync, type ChildProcess } from 'node:child_process'
 
-export type Runner = (command: string, onLine?: (line: string) => void) => Promise<{ code: number; output: string }>
+export interface RunOpts {
+  cwd?: string
+  env?: NodeJS.ProcessEnv
+  input?: string
+  timeoutMs?: number
+}
+
+export type Runner = (
+  command: string,
+  onLine?: (line: string) => void,
+  opts?: RunOpts
+) => Promise<{ code: number; output: string }>
 
 const running = new Set<ChildProcess>()
 
-export const runShell: Runner = (command, onLine) =>
+export const runShell: Runner = (command, onLine, opts = {}) =>
   new Promise(resolve => {
-    const child = spawn(command, { shell: true, windowsHide: true, env: process.env })
+    const child = spawn(command, { shell: true, windowsHide: true, env: opts.env ?? process.env, cwd: opts.cwd })
     running.add(child)
+    const timer = opts.timeoutMs ? setTimeout(() => killTree(child.pid), opts.timeoutMs) : undefined
+    if (opts.input !== undefined) child.stdin?.end(opts.input)
     let output = ''
     let partial = ''
     const feed = (buf: Buffer) => {
@@ -20,6 +33,7 @@ export const runShell: Runner = (command, onLine) =>
     child.stdout?.on('data', feed)
     child.stderr?.on('data', feed)
     const done = (code: number) => {
+      clearTimeout(timer)
       running.delete(child)
       if (partial.trim()) onLine?.(partial)
       resolve({ code, output })
