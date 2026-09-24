@@ -67,6 +67,8 @@ describe('memory settings', () => {
     const f = join(dir, 'mem-bad.json')
     writeFileSync(f, JSON.stringify({ memory: { model: 'haiku & del /q *', dailyCap: -1, indexCap: 2.5 } }))
     expect(loadSettings(f).memory).toEqual(defaults().memory)
+    writeFileSync(f, JSON.stringify({ memory: { model: '--dangerously-skip-permissions' } }))
+    expect(loadSettings(f).memory.model).toBe(defaults().memory.model)
     writeFileSync(f, JSON.stringify({ memory: 'nope' }))
     expect(loadSettings(f).memory).toEqual(defaults().memory)
   })

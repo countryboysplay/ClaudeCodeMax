@@ -47,8 +47,8 @@ export function loadSettings(file: string): Settings {
   const int = (v: unknown, lo: number, hi: number, dflt: number) =>
     Number.isInteger(v) && (v as number) >= lo && (v as number) <= hi ? (v as number) : dflt
   s.memory = {
-    // The model name goes into a shell command line, so only plain model ids are allowed.
-    model: typeof m.model === 'string' && /^[\w.:-]+$/.test(m.model) ? m.model : d.model,
+    // The model name goes into a shell command line, so only plain model ids are allowed (no leading '-' flags).
+    model: typeof m.model === 'string' && /^\w[\w.:-]*$/.test(m.model) ? m.model : d.model,
     dailyCap: int(m.dailyCap, 0, 1000, d.dailyCap),
     indexCap: int(m.indexCap, 10, 200, d.indexCap)
   }
