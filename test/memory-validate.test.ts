@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { serialize, type Meta } from '../src/main/memory/files'
-import { commit, ensureRepo } from '../src/main/memory/store'
+import { commit, ensureRepo, git } from '../src/main/memory/store'
 import { SECRET, changedFiles, problems, rollback } from '../src/main/memory/validate'
 
 const meta: Meta = { name: 'a', type: 'project', summary: 's', sources: [], verified: '2026-09-24', used: '2026-09-24', uses: 0, stale: false, pinned: false }
@@ -33,6 +33,15 @@ describe('problems', () => {
     const files = await changedFiles(root)
     expect(files.sort()).toEqual(['projects/P/topics/b.md', 'topics/a.md'])
     expect(problems(root, [...files, 'topics/deleted.md'])).toEqual([])
+  })
+  it('lists renamed paths correctly', async () => {
+    const root = await setup()
+    mkdirSync(join(root, 'topics'), { recursive: true })
+    writeFileSync(join(root, 'topics', 'old.md'), serialize(meta, 'fine\n'))
+    await commit(root, 'initial')
+    await git(root, 'mv', 'topics/old.md', 'topics/new.md')
+    const files = await changedFiles(root)
+    expect(files.sort()).toEqual(['topics/new.md', 'topics/old.md'])
   })
   it('rejects other locations, bad frontmatter, long files and secrets', async () => {
     const root = await setup()

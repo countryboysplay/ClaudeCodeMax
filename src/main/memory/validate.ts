@@ -9,7 +9,7 @@ export const SECRET =
 const ALLOWED = /^(user\.md|topics\/[^/]+\.md|projects\/[^/]+\/topics\/[^/]+\.md)$/
 
 export async function changedFiles(root: string): Promise<string[]> {
-  const out = await git(root, 'status', '--porcelain', '-uall', '-z')
+  const out = await git(root, 'status', '--porcelain', '-uall', '-z', '--no-renames')
   return out.split('\0').filter(Boolean).map(e => e.slice(3))
 }
 
