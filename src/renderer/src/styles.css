@@ -95,6 +95,8 @@ h1[tabindex='-1']:focus-visible { outline: none; } /* programmatic dialog-open f
 .panel-body webview { flex: 1; border: 0; background: #fff; } /* embedded tool pages assume a light background; a dark host colour would just show through any transparent bit as a worse mismatch */
 .empty { margin: auto; display: grid; gap: 8px; justify-items: center; text-align: center; padding: 16px; max-width: 60ch; }
 .log { max-height: 240px; width: 100%; overflow: auto; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px; font: 12px/1.4 'Cascadia Mono', Consolas, monospace; white-space: pre-wrap; text-align: left; }
+.memory { max-width: none; width: 100%; }
+.memory h3 { margin: 8px 0 0; font-size: 13px; justify-self: start; }
 
 .statusbar { grid-area: status; display: flex; gap: 16px; padding: 4px 12px; border-top: 1px solid var(--border); background: var(--surface); font-size: 12px; }
 .item { display: inline-flex; gap: 6px; align-items: center; }

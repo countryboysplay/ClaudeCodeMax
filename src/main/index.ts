@@ -13,6 +13,7 @@ import { Service } from './services'
 import { STEPS, check, install, blockedBy, needsWizard } from './setup'
 import { MemoryRunner } from './memory/runner'
 import { claudeProjectsDir, memDir } from './memory/files'
+import { git, readQueue } from './memory/store'
 import type { AppState, InitResult, InstallResult, ServiceName, StepView } from '../shared/types'
 
 const REPO_URL = 'https://github.com/countryboysplay/ClaudeCodeMax'
@@ -247,6 +248,12 @@ function registerIpc(): void {
     launchClaude()
   })
   ipcMain.handle('service:restart', (_e, n: unknown) => svc(n)?.restart())
+  ipcMain.handle('memory:status', async () => ({
+    log: memory?.log ?? [],
+    queued: readQueue(memDir()).length,
+    commits: (await git(memDir(), 'log', '-15', '--format=%cr — %s').catch(() => '')).split('\n').filter(Boolean)
+  }))
+  ipcMain.handle('memory:open', () => shell.openPath(memDir()))
   ipcMain.handle('service:log', (_e, n: unknown) => (n === 'memory' ? (memory?.log ?? []) : (svc(n)?.log ?? [])))
   ipcMain.handle('layout:set', (_e, l: { split?: unknown; tab?: unknown } | undefined) => {
     if (typeof l?.split === 'number' && l.split >= 0.2 && l.split <= 0.8) settings.split = l.split

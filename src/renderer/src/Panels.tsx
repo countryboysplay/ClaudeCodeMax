@@ -5,7 +5,8 @@ import { STATUS_TEXT } from './StatusBar'
 const TABS = [
   { id: 'cost', label: 'Cost' },
   { id: 'graph', label: 'Graph' },
-  { id: 'savings', label: 'Savings' }
+  { id: 'savings', label: 'Savings' },
+  { id: 'memory', label: 'Memory' }
 ]
 
 function Missing({ tool, onSetup }: { tool: string; onSetup: () => void }) {
@@ -36,6 +37,27 @@ function ServiceView({ name, label, status, url }: { name: string; label: string
       <p>
         {label} is {STATUS_TEXT[status]}…
       </p>
+    </div>
+  )
+}
+
+function MemoryView() {
+  const [m, setM] = useState<{ log: string[]; queued: number; commits: string[] } | null>(null)
+  useEffect(() => {
+    const load = () => void window.api.memoryStatus().then(setM)
+    load()
+    const id = setInterval(load, 3000)
+    return () => clearInterval(id)
+  }, [])
+  if (!m) return null
+  return (
+    <div className="empty memory">
+      <p aria-live="polite">{m.queued ? `${m.queued} session${m.queued === 1 ? '' : 's'} waiting to be distilled` : 'Nothing waiting to be distilled'}</p>
+      <button onClick={() => void window.api.openMemory()}>Open memory folder</button>
+      <h3>Recent changes</h3>
+      <pre className="log">{m.commits.join('\n') || 'No memory yet.'}</pre>
+      <h3>Distiller log</h3>
+      <pre className="log">{m.log.join('\n') || 'Nothing since the app started.'}</pre>
     </div>
   )
 }
@@ -80,6 +102,7 @@ export function Panels({ state, onSetup }: { state: AppState; onSetup: () => voi
         )
       return <ServiceView name="headroom" label="Headroom" status={state.services.headroom} url={state.urls.savings} />
     }
+    if (tab === 'memory') return <MemoryView />
     if (state.installed.graphify === false) return <Missing tool="Graphify" onSetup={onSetup} />
     if (!state.project)
       return (
