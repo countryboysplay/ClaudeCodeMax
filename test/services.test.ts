@@ -26,6 +26,17 @@ function make(probe: (url: string) => Promise<boolean> = async () => true) {
 }
 
 describe('Service', () => {
+  it('passes the spec env to the spawned process', () => {
+    let seen: Record<string, string> | undefined
+    const svc = new Service({ name: 'x', command: 'x', healthUrl: 'http://x', env: { A: '1' } }, (_c, env) => {
+      seen = env
+      return fakeChild()
+    }, async () => false)
+    svc.start()
+    svc.stop()
+    expect(seen).toEqual({ A: '1' })
+  })
+
   beforeEach(() => vi.useFakeTimers())
   afterEach(() => vi.useRealTimers())
 

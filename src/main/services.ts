@@ -9,6 +9,7 @@ export interface ServiceSpec {
   name: string
   command: string
   healthUrl: string
+  env?: Record<string, string>
 }
 
 export interface Child {
@@ -18,10 +19,10 @@ export interface Child {
   on(event: 'exit', listener: () => void): unknown
 }
 
-export type Spawner = (command: string) => Child
+export type Spawner = (command: string, env?: Record<string, string>) => Child
 export type Probe = (url: string) => Promise<boolean>
 
-const defaultSpawner: Spawner = command => spawn(command, { shell: true, windowsHide: true, env: process.env })
+const defaultSpawner: Spawner = (command, env) => spawn(command, { shell: true, windowsHide: true, env: { ...process.env, ...env } })
 const defaultProbe: Probe = url => fetch(url).then(r => r.status < 500, () => false)
 
 // ponytail: attempts reset only on start(); a service that crashes 3 times over a long session stays failed until the user clicks Restart.
@@ -64,7 +65,7 @@ export class Service extends EventEmitter {
 
   private launch(): void {
     this.set('starting')
-    const child = this.spawner(this.spec.command)
+    const child = this.spawner(this.spec.command, this.spec.env)
     this.child = child
     const feed = (b: Buffer) => {
       this.log.push(...b.toString().split(/\r?\n/).filter(Boolean))

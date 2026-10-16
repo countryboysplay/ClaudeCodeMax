@@ -183,7 +183,9 @@ async function startDashboard(): Promise<void> {
     headroom: new Service({
       name: 'headroom',
       command: cmdFor('headroom', 'headroom proxy --port {port}'),
-      healthUrl: `http://127.0.0.1:${ports.headroom}/stats`
+      healthUrl: `http://127.0.0.1:${ports.headroom}/stats`,
+      // Headroom sends an anonymous usage beacon and checks PyPI daily unless told not to.
+      env: { HEADROOM_BEACON: 'off', HEADROOM_UPDATE_CHECK: 'off' }
     })
   }
   for (const s of Object.values(services)) s.on('status', pushState)
