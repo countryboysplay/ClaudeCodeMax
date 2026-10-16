@@ -20,6 +20,7 @@ const api = {
   restartClaude: (): Promise<void> => ipcRenderer.invoke('claude:restart'),
   setHeadroom: (on: boolean): Promise<void> => ipcRenderer.invoke('toggle:headroom', on),
   setPonytail: (on: boolean): Promise<void> => ipcRenderer.invoke('toggle:ponytail', on),
+  setLean: (on: boolean): Promise<void> => ipcRenderer.invoke('toggle:lean', on),
   restartService: (name: string): Promise<void> => ipcRenderer.invoke('service:restart', name),
   serviceLog: (name: string): Promise<string[]> => ipcRenderer.invoke('service:log', name),
   memoryStatus: (): Promise<{ log: string[]; queued: number; commits: string[] }> => ipcRenderer.invoke('memory:status'),

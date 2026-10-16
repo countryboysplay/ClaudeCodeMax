@@ -132,6 +132,7 @@ If Headroom's default port is taken, the app picks a free one and passes it to b
 |---|---|
 | **Project ▾** (header) | Pick a folder or reopen a recent one (the last 10 are saved). **File → Open Project…** or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd> does the same. |
 | **Headroom on/off** | Routes Claude through the Headroom proxy, or not. Claude restarts so the change takes effect. |
+| **Lean on/off** | Keeps skill descriptions, plugins and claude.ai connectors out of Claude's context in app sessions. See [Lean mode](#lean-mode). Claude restarts so the change takes effect. |
 | **Ponytail on/off** | Turns the Ponytail plugin on or off in Claude Code, then restarts Claude. |
 | **Ponytail review / audit** | Types `/ponytail-review` (over-engineering review of your changes) or `/ponytail-audit` (whole-repo audit) into Claude. |
 | **Usage bar** (bottom) | Your 5-hour and weekly plan limits, context use, session cost at API prices and cache state. Hover an item for details. It fills in after Claude's first reply in a session. |
@@ -144,6 +145,20 @@ If Headroom's default port is taken, the app picks a free one and passes it to b
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> | Copies the selected text in the terminal. |
 
 When Claude exits, the terminal shows **Session ended** with a **Restart** button. If the Headroom proxy goes down while Claude is using it, a banner lets you restart Headroom or relaunch Claude without it. The app never switches Claude off the proxy without asking.
+
+## Lean mode
+
+Every skill description, plugin and MCP connector Claude Code loads is re-sent on **every turn**, whether Claude uses it or not. On a typical setup that's more than half of a fresh session's context. Lean mode (on by default) trims it for the sessions the app launches:
+
+| What | Lean mode |
+|---|---|
+| claude.ai connectors (MCP servers you added on claude.ai) | Off (`disableClaudeAiConnectors`) |
+| Skills and plugins synced from claude.ai | Off (`syncClaudeAiSkills`, `syncClaudeAiPlugins`) |
+| Claude Code's built-in skills (`/loop`, `/schedule`, `/code-review`, …) | Off (`disableBundledSkills`) |
+| Plugins you enabled globally | Off, **except** Ponytail, code-intelligence (`*-lsp`) plugins, and any plugin the project's own `.claude/settings.json` turns on |
+| Your own skills in `~/.claude/skills` | Hidden from Claude but still work when **you** type `/name` (`skillOverrides: user-invocable-only`). Overrides you already set are kept. |
+
+It works through the `--settings` file the app passes to Claude, so `~/.claude/settings.json` is never changed and terminals outside the app are unaffected. To turn a plugin back on for one project, enable it in that project's `.claude/settings.json`. Turn Lean off to get everything back.
 
 ## Memory
 
@@ -223,7 +238,7 @@ If a distill fails, the app stops distilling until its next start. The reason is
 - **The tools behave as their authors designed.** Claude Code talks to Anthropic, and with Headroom on it goes through the local proxy first. Each tool's README explains what it does.
 - **The panels are sandboxed.** The UI runs with `contextIsolation`, `sandbox` and no Node integration. A `will-attach-webview` guard removes preloads and only allows `http://localhost:*` and `http://127.0.0.1:*`. Any other link opens in your browser, and only if it's `https:`.
 - **Memory stays on your PC, but distilling it uses Claude.** The distiller sends session transcripts to Claude through your own Claude Code sign-in (by default with Haiku, at most 30 runs a day), and the memory files it writes stay in `%USERPROFILE%\.claudecodemax\memory`. Distiller output that looks like it contains a secret is rejected and rolled back.
-- **The app stores very little else.** `%APPDATA%\ClaudeCodeMax\settings.json` holds your recent projects, the two toggles, skipped tools, the layout and the memory settings (`memory.model`, `memory.dailyCap`, `memory.indexCap`). That's all.
+- **The app stores very little else.** `%APPDATA%\ClaudeCodeMax\settings.json` holds your recent projects, the three toggles, skipped tools, the layout and the memory settings (`memory.model`, `memory.dailyCap`, `memory.indexCap`). That's all.
 
 ## Develop
 

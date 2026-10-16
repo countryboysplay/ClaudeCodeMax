@@ -44,6 +44,7 @@ function Header({ state, onSetup }: { state: AppState; onSetup: () => void }) {
           onChange={v => void window.api.setHeadroom(v)}
           onInstall={onSetup}
         />
+        <Toggle label="Lean" on={state.lean} available onChange={v => void window.api.setLean(v)} onInstall={onSetup} />
         <Toggle
           label="Ponytail"
           on={state.ponytail}

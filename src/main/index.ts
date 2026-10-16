@@ -1,6 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, shell } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import { join } from 'node:path'
+import { homedir } from 'node:os'
 import { existsSync, readFileSync, statSync, watchFile, writeFileSync } from 'node:fs'
 import { spawn as spawnPty, type IPty } from '@lydell/node-pty'
 import { refreshPath } from './path'
@@ -14,6 +15,7 @@ import { MemoryRunner } from './memory/runner'
 import { claudeProjectsDir, memDir } from './memory/files'
 import { git, readQueue } from './memory/store'
 import { parseUsage } from './usage'
+import { leanSettings, readLeanInputs } from './lean'
 import type { AppState, InitResult, InstallResult, ServiceName, StepView, Usage } from '../shared/types'
 
 const REPO_URL = 'https://github.com/countryboysplay/ClaudeCodeMax'
@@ -50,7 +52,7 @@ const usageFile = () => join(app.getPath('userData'), 'usage.json')
 const resource = (name: string) =>
   (app.isPackaged ? join(process.resourcesPath, name) : join(app.getAppPath(), 'resources', name)).replace(/\\/g, '/')
 
-// Memory hooks and the usage status line for app-launched sessions only: passed with --settings, so ~/.claude/settings.json is never touched.
+// Memory hooks, the usage status line and Lean mode for app-launched sessions only: passed with --settings, so ~/.claude/settings.json is never touched.
 function writeHooks(): string {
   const hook = (event: string) => [{ hooks: [{ type: 'command', command: `node "${resource('memory-hook.mjs')}" ${event}` }] }]
   const file = join(app.getPath('userData'), 'ccm-hooks.json')
@@ -59,7 +61,8 @@ function writeHooks(): string {
     JSON.stringify(
       {
         hooks: { SessionStart: hook('start'), SessionEnd: hook('enqueue'), PreCompact: hook('enqueue') },
-        statusLine: { type: 'command', command: `node "${resource('statusline.mjs')}"` }
+        statusLine: { type: 'command', command: `node "${resource('statusline.mjs')}"` },
+        ...(settings.lean ? leanSettings(readLeanInputs(join(homedir(), '.claude'), project)) : {})
       },
       null,
       2
@@ -85,6 +88,7 @@ function state(): AppState {
     recent: settings.recent,
     headroom: settings.headroom,
     ponytail: settings.ponytail,
+    lean: settings.lean,
     split: settings.split,
     tab: settings.tab,
     services: { headroom: services?.headroom.status ?? 'stopped' },
@@ -243,6 +247,11 @@ function registerIpc(): void {
     save()
     if (settings.headroom) syncServices()
     else services?.headroom.stop()
+    launchClaude()
+  })
+  ipcMain.handle('toggle:lean', (_e, on: unknown) => {
+    settings.lean = on === true
+    save()
     launchClaude()
   })
   ipcMain.handle('toggle:ponytail', async (_e, on: unknown) => {

@@ -41,6 +41,7 @@ describe('loadSettings', () => {
     expect(s.split).toBe(0.3)
     expect(s.headroom).toBe(false)
     expect(s.ponytail).toBe(false)
+    expect(loadSettings(join(dir, 'missing.json')).lean).toBe(true)
     expect(s.tab).toBe('graph')
   })
   it('does not share arrays between loads', () => {

@@ -24,6 +24,7 @@ export interface AppState {
   recent: string[]
   headroom: boolean
   ponytail: boolean
+  lean: boolean
   split: number
   tab: string
   services: Record<ServiceName, Status>

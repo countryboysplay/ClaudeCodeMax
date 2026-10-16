@@ -11,6 +11,7 @@ export interface Settings {
   recent: string[]
   headroom: boolean
   ponytail: boolean
+  lean: boolean
   skipped: string[]
   split: number
   tab: string
@@ -21,6 +22,7 @@ export const defaults = (): Settings => ({
   recent: [],
   headroom: true,
   ponytail: true,
+  lean: true,
   skipped: [],
   split: 0.6,
   tab: 'savings',
@@ -41,6 +43,7 @@ export function loadSettings(file: string): Settings {
   if (typeof s.split !== 'number' || !Number.isFinite(s.split) || s.split < 0.2 || s.split > 0.8) s.split = defaults().split
   if (typeof s.headroom !== 'boolean') s.headroom = defaults().headroom
   if (typeof s.ponytail !== 'boolean') s.ponytail = defaults().ponytail
+  if (typeof s.lean !== 'boolean') s.lean = defaults().lean
   if (typeof s.tab !== 'string') s.tab = defaults().tab
   const m: Partial<MemorySettings> = s.memory && typeof s.memory === 'object' && !Array.isArray(s.memory) ? s.memory : {}
   const d = defaults().memory
