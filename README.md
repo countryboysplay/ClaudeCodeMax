@@ -89,7 +89,7 @@ You don't have to open a second terminal.
 ┌──────────────────────────────────────────────────────────────────────────┐
 │ Project: C:\code\myapp  v     Headroom: on   Ponytail: on   review audit │
 ├────────────────────────────────────┬─────────────────────────────────────┤
-│                                    │  [Savings] [Memory]                 │
+│                                    │  [Savings] [Tasks] [Memory]         │
 │   Claude Code terminal             │                                     │
 │   (xterm.js + node-pty, runs       │   the selected tool's own web UI    │
 │    `claude` in your project)       │   (an embedded <webview>)           │
@@ -141,6 +141,7 @@ If Headroom's default port is taken, the app picks a free one and passes it to b
 | **Divider** | Drag it, or focus it and use the arrow keys, to resize the terminal and the panels. The app remembers the split and the last tab you used. |
 | **Tools → Check for tool updates** | Stops the tools, runs `uv tool upgrade headroom-ai`, `claude update` and `claude plugin update ponytail@ponytail`, then starts everything again. The output is shown as it runs. |
 | **Tools → Re-run setup** | Opens the setup wizard again, for example to install a tool you skipped. |
+| **Tasks tab** | Every request you made in this project, what Claude changed, its closing note, and every deferred-work comment in the code. See [Tasks](#tasks). |
 | **Memory tab** | Shows how many sessions are waiting to be distilled, recent memory changes and the distiller's log. **Open memory folder** opens it in Explorer. |
 | **Help → Third-party licenses** | Opens [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). |
 | <kbd>F6</kbd> | The terminal sends every key to Claude, including <kbd>Tab</kbd>. Press <kbd>F6</kbd> to move keyboard focus out of the terminal. |
@@ -163,6 +164,23 @@ Every skill description, plugin and MCP connector Claude Code loads is re-sent o
 | Your own skills in `~/.claude/skills` | Hidden from Claude but still work when **you** type `/name` (`skillOverrides: user-invocable-only`). Overrides you already set are kept. |
 
 It works through the `--settings` file the app passes to Claude, so `~/.claude/settings.json` is never changed and terminals outside the app are unaffected. To turn a plugin back on for one project, enable it in that project's `.claude/settings.json`. Turn Lean off to get everything back.
+
+## Tasks
+
+The **Tasks** tab shows what Claude did in the open project and what it left for later, so nothing gets deferred without a reason. It costs no tokens: it reads files already on your PC and never calls a model.
+
+**Each task** is one request you typed (newest first, up to 200), read from the project's Claude Code session logs in `%USERPROFILE%\.claude\projects`:
+
+- **You asked**: your request, plus anything you added while Claude was working.
+- **Changed**: the files Claude wrote or edited. Click one to open it. Files changed through Bash or PowerShell commands aren't listed.
+- **Claude's note**: the last paragraph of Claude's final reply. With Ponytail on, that's where Claude says what it skipped and what risks remain. **Show full reply** shows the rest.
+- **Unfinished**: you interrupted it, or the session ended before Claude replied.
+- **Skipped: check why**: the note says something was skipped or put off, without saying why.
+- If Claude used its built-in task list in that session, its checklist shows too.
+
+**Deferred items in the code** lists every `shortcut:`, `ponytail:`, `TODO` and `FIXME` comment in the project's source (Markdown files aren't scanned). A comment counts as having a reason when it explains itself, for example Ponytail's `shortcut: <the limit>, <when to upgrade>` format, or words like *because*, *until* or *when*. The rest are marked **No reason given** and listed first.
+
+Both checks are word-based, so they can miss or over-flag. **Refresh** re-reads everything.
 
 ## Memory
 

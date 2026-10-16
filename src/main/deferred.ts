@@ -9,6 +9,9 @@ const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'out', 'build', '.ven
 // A marker only counts after a comment opener, so prose or strings that mention TODO aren't listed.
 const MARK = /(?:\/\/|#|\/\*|<!--|--|^\s*\*)\s*(shortcut:|ponytail:|TODO\b|FIXME\b):?\s*(.*)$/
 
+// An opener after an odd number of quotes is inside a string literal, not a real comment.
+const inString = (before: string) => ['"', "'", '`'].some(q => before.split(q).length % 2 === 0)
+
 export const hasReason = (text: string): boolean =>
   /, | — | - /.test(text) || /\b(because|since|until|so that|to avoid|when)\b/i.test(text)
 
@@ -34,7 +37,8 @@ async function listFiles(dir: string): Promise<string[]> {
 
 export async function scanDeferred(dir: string): Promise<{ deferred: Deferred[]; scanCapped: boolean }> {
   // git ls-files --others lists untracked node_modules etc. unless they're gitignored, so filter both ways.
-  const files = (await listFiles(dir)).filter(f => !f.split(/[\\/]/).some(p => SKIP_DIRS.has(p)))
+  // Docs only quote code comments; deferred work lives in the code itself.
+  const files = (await listFiles(dir)).filter(f => !f.split(/[\\/]/).some(p => SKIP_DIRS.has(p)) && !/\.md$/i.test(f))
   const deferred: Deferred[] = []
   for (const file of files.slice(0, MAX_FILES)) {
     let buf: Buffer
@@ -51,7 +55,7 @@ export async function scanDeferred(dir: string): Promise<{ deferred: Deferred[];
       .split(/\r?\n/)
       .forEach((line, i) => {
         const m = MARK.exec(line)
-        if (!m) return
+        if (!m || inString(line.slice(0, m.index))) return
         const text = m[2].replace(/\s*(\*\/|-->)\s*$/, '').trim()
         deferred.push({ file: file.replace(/\\/g, '/'), line: i + 1, marker: m[1].replace(/:$/, ''), text, reason: hasReason(text) })
       })

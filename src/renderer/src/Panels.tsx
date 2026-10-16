@@ -1,9 +1,11 @@
 import { useEffect, useState, type KeyboardEvent } from 'react'
 import type { AppState, Status } from '../../shared/types'
 import { STATUS_TEXT } from './StatusBar'
+import { TasksView } from './Tasks'
 
 const TABS = [
   { id: 'savings', label: 'Savings' },
+  { id: 'tasks', label: 'Tasks' },
   { id: 'memory', label: 'Memory' }
 ]
 
@@ -83,6 +85,7 @@ export function Panels({ state, onSetup }: { state: AppState; onSetup: () => voi
   }
 
   function body() {
+    if (tab === 'tasks') return <TasksView project={state.project} />
     if (tab === 'memory') return <MemoryView />
     if (state.installed.headroom === false) return <Missing tool="Headroom" onSetup={onSetup} />
     if (!state.headroom)

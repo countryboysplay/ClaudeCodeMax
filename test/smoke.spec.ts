@@ -1,5 +1,5 @@
 import { test, expect, _electron as electron } from '@playwright/test'
-import { existsSync, mkdtempSync, readdirSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
@@ -18,6 +18,18 @@ test('runs Claude in the project, serves the Savings panel, reports usage, and l
   const project = mkdtempSync(join(tmpdir(), 'ccm project ')) // space on purpose
   const stub = `node "${join(fixtures, 'stub-server.mjs')}" {port}`
   const memory = join(mkdtempSync(join(tmpdir(), 'ccm-mem-')), 'memory')
+  // A past session and a deferred comment with no reason, for the Tasks tab.
+  const cp = mkdtempSync(join(tmpdir(), 'ccm-cp-'))
+  const sessions = join(cp, project.replace(/[^a-zA-Z0-9]/g, '-'))
+  mkdirSync(sessions)
+  writeFileSync(
+    join(sessions, 's1.jsonl'),
+    [
+      JSON.stringify({ type: 'user', timestamp: '2026-10-16T10:00:00Z', message: { role: 'user', content: 'Add a login page' } }),
+      JSON.stringify({ type: 'assistant', message: { role: 'assistant', content: [{ type: 'text', text: 'Done.\n\nSkipped the tests.' }] } })
+    ].join('\n')
+  )
+  writeFileSync(join(project, 'a.ts'), '// shortcut: no retry\n')
   const app = await electron.launch({
     args: ['.'],
     env: {
@@ -29,7 +41,7 @@ test('runs Claude in the project, serves the Savings panel, reports usage, and l
       CCM_CMD_CLAUDE: join(fixtures, 'fake-claude.cmd'),
       CCM_CMD_HEADROOM: stub,
       CCM_MEMORY_DIR: memory,
-      CCM_CLAUDE_PROJECTS: mkdtempSync(join(tmpdir(), 'ccm-cp-')),
+      CCM_CLAUDE_PROJECTS: cp,
       CCM_CMD_DISTILLER: `node "${join(fixtures, 'fake-distiller.mjs')}"`
     }
   })
@@ -63,6 +75,11 @@ test('runs Claude in the project, serves the Savings panel, reports usage, and l
 
   await win.getByRole('tab', { name: 'Savings' }).click()
   await expect(win.locator('webview')).toHaveAttribute('src', /^http:\/\/127\.0\.0\.1:\d+\/dashboard$/)
+
+  await win.getByRole('tab', { name: 'Tasks' }).click()
+  await expect(win.getByText('Add a login page')).toBeVisible({ timeout: 15_000 })
+  await expect(win.getByText('Skipped: check why')).toBeVisible()
+  await expect(win.getByText('No reason given')).toBeVisible()
 
   const started = readdirSync(pids).map(f => Number(f.split('-')[1]))
   expect(started.length).toBeGreaterThanOrEqual(2) // claude + headroom stub

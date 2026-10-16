@@ -1,6 +1,6 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, shell } from 'electron'
 import { autoUpdater } from 'electron-updater'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
 import { homedir } from 'node:os'
 import { existsSync, readFileSync, statSync, watchFile, writeFileSync } from 'node:fs'
 import { spawn as spawnPty, type IPty } from '@lydell/node-pty'
@@ -16,7 +16,10 @@ import { claudeProjectsDir, memDir } from './memory/files'
 import { git, readQueue } from './memory/store'
 import { parseUsage } from './usage'
 import { leanSettings, readLeanInputs } from './lean'
-import type { AppState, InitResult, InstallResult, ServiceName, StepView, Usage } from '../shared/types'
+import { readTasks } from './tasks'
+import { scanDeferred } from './deferred'
+import { isInside } from './security'
+import type { AppState, InitResult, InstallResult, ServiceName, StepView, TaskReport, Usage } from '../shared/types'
 
 const REPO_URL = 'https://github.com/countryboysplay/ClaudeCodeMax'
 const UPDATE_CMDS = [
@@ -286,6 +289,15 @@ function registerIpc(): void {
     commits: (await git(memDir(), 'log', '-15', '--format=%cr — %s').catch(() => '')).split('\n').filter(Boolean)
   }))
   ipcMain.handle('memory:open', () => shell.openPath(memDir()))
+  ipcMain.handle('tasks:get', async (): Promise<TaskReport | null> => {
+    if (!project) return null
+    const [tasks, scan] = await Promise.all([readTasks(project, claudeProjectsDir(), join(homedir(), '.claude', 'tasks')), scanDeferred(project)])
+    return { tasks, ...scan }
+  })
+  ipcMain.handle('tasks:open', (_e, file: unknown) => {
+    // Only files inside the open project: the path comes from transcripts and source comments.
+    if (project && typeof file === 'string' && isInside(project, file)) void shell.openPath(resolve(project, file))
+  })
   ipcMain.handle('service:log', (_e, n: unknown) => (n === 'memory' ? (memory?.log ?? []) : (svc(n)?.log ?? [])))
   ipcMain.handle('layout:set', (_e, l: { split?: unknown; tab?: unknown } | undefined) => {
     if (typeof l?.split === 'number' && l.split >= 0.2 && l.split <= 0.8) settings.split = l.split

@@ -21,6 +21,8 @@ describe('scanDeferred', () => {
     mkdirSync(join(dir, 'node_modules'))
     writeFileSync(join(dir, 'node_modules', 'd.js'), '// TODO ignored\n')
     writeFileSync(join(dir, 'e.bin'), Buffer.from([0, 1, 2, 47, 47, 32, 84, 79, 68, 79]))
+    writeFileSync(join(dir, 'f.ts'), "const fixture = '// TODO inside a string'\n")
+    writeFileSync(join(dir, 'notes.md'), '```ts\n// shortcut: quoted in a doc\n```\n')
     const { deferred, scanCapped } = await scanDeferred(dir)
     expect(scanCapped).toBe(false)
     expect(deferred.map(d => [d.file, d.line, d.marker, d.text, d.reason])).toEqual([

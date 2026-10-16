@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer, type IpcRendererEvent } from 'electron'
-import type { AppState, InitResult, InstallResult, StepView } from '../shared/types'
+import type { AppState, InitResult, InstallResult, StepView, TaskReport } from '../shared/types'
 
 function on<T extends unknown[]>(channel: string) {
   return (cb: (...args: T) => void) => {
@@ -26,6 +26,8 @@ const api = {
   serviceLog: (name: string): Promise<string[]> => ipcRenderer.invoke('service:log', name),
   memoryStatus: (): Promise<{ log: string[]; queued: number; commits: string[] }> => ipcRenderer.invoke('memory:status'),
   openMemory: (): Promise<string> => ipcRenderer.invoke('memory:open'),
+  tasks: (): Promise<TaskReport | null> => ipcRenderer.invoke('tasks:get'),
+  openTaskFile: (file: string): Promise<void> => ipcRenderer.invoke('tasks:open', file),
   setLayout: (l: { split?: number; tab?: string }): Promise<void> => ipcRenderer.invoke('layout:set', l),
   setupCheck: (): Promise<StepView[]> => ipcRenderer.invoke('setup:check'),
   setupInstall: (id: string): Promise<InstallResult> => ipcRenderer.invoke('setup:install', id),
