@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { appendFileSync, mkdtempSync, statSync, writeFileSync } from 'node:fs'
+import { appendFileSync, copyFileSync, mkdtempSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { sliceTranscript } from '../src/main/memory/transcript'
@@ -23,6 +23,16 @@ describe('sliceTranscript', () => {
     expect(s.reads).toEqual(['C:\\mem\\topics\\a.md'])
     expect(s.cwd).toBe('C:\\code\\p')
     expect(s.end).toBe(statSync(f).size)
+  })
+  it('reads a real 2.1.301 transcript: no blobs, compact summaries or API errors', () => {
+    const f = join(dir, 'real.jsonl')
+    copyFileSync(new URL('./fixtures/transcript-real.jsonl', import.meta.url), f)
+    const s = sliceTranscript(f, 0)
+    expect(s.text).toContain('USER: Add a health check')
+    expect(s.text).toContain('CLAUDE: Added the endpoint.')
+    expect(s.text).toContain('TOOL: Write C:\\proj\\src\\health.ts')
+    for (const gone of ['BLOB', 'This session is being continued', 'session limit']) expect(s.text).not.toContain(gone)
+    expect(s.cwd).toBe('C:\\proj')
   })
   it('resumes from an offset', () => {
     const f = join(dir, 'b.jsonl')

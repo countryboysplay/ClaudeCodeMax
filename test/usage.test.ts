@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { mkdtempSync, writeFileSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parseUsage, resumeFlag } from '../src/main/usage'
@@ -61,5 +62,27 @@ describe('parseUsage', () => {
   it('returns null for anything that is not an object', () => {
     expect(parseUsage(null, now, true)).toBeNull()
     expect(parseUsage([1], now, true)).toBeNull()
+  })
+})
+
+describe('real 2.1.301 status line JSON', () => {
+  const text = readFileSync(new URL('./fixtures/statusline-real.json', import.meta.url), 'utf8')
+
+  it('parses to the fields the status bar shows', () =>
+    expect(parseUsage(JSON.parse(text), 1_800_000_000, true)).toEqual({
+      model: 'Sonnet 5.5',
+      cost: 0.42,
+      context: 3,
+      fiveHour: { pct: 12, resetsAt: 1_800_003_600 },
+      week: { pct: 20, resetsAt: 1_800_200_000 },
+      cacheExpiresAt: 1_800_003_000,
+      sessionId: '00000000-0000-4000-8000-000000000001'
+    }))
+
+  it('the status line script saves the JSON untouched and prints the short line', () => {
+    const file = join(mkdtempSync(join(tmpdir(), 'ccm-sl-')), 'usage.json')
+    const out = execFileSync(process.execPath, ['resources/statusline.mjs'], { input: text, env: { ...process.env, CCM_USAGE_FILE: file } })
+    expect(out.toString()).toBe('5h 12% · context 3%')
+    expect(readFileSync(file, 'utf8')).toBe(text)
   })
 })

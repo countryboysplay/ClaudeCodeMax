@@ -33,7 +33,7 @@ export function sliceTranscript(file: string, offset: number, maxChars = 80_000)
       continue
     }
     if (!cwd && typeof o.cwd === 'string') cwd = o.cwd
-    if (o.isMeta || o.isSidechain) continue
+    if (o.isMeta || o.isSidechain || o.isCompactSummary || o.isVisibleInTranscriptOnly || o.isApiErrorMessage) continue
     const c = o.message?.content
     if (o.type === 'user') {
       if (typeof c === 'string') parts.push(`USER: ${c}`)

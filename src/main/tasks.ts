@@ -38,11 +38,14 @@ export function parseTranscript(text: string, rel: (file: string) => string = f 
     } catch {
       continue
     }
-    if (o.isMeta || o.isSidechain || o.isCompactSummary || o.isVisibleInTranscriptOnly) continue
+    if (o.isMeta || o.isSidechain || o.isCompactSummary || o.isVisibleInTranscriptOnly || o.isApiErrorMessage) continue
     if (o.type === 'queue-operation') {
       if (t && o.operation === 'enqueue' && typeof o.content === 'string' && !t.added.includes(o.content)) t.added.push(o.content)
     } else if (o.type === 'user') {
-      if (JSON.stringify(o.message?.content ?? '').includes(INTERRUPT)) {
+      // Plain text only: a tool result that quotes the marker is not an interrupt.
+      const c = o.message?.content
+      const plain = typeof c === 'string' ? c : Array.isArray(c) ? c.filter(b => b?.type === 'text').map(b => String(b.text)).join('\n') : ''
+      if (plain.trimStart().startsWith(INTERRUPT)) {
         if (t) t.unfinished = true
         continue
       }

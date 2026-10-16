@@ -10,6 +10,7 @@
     "build": "electron-vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "e2e:real": "vitest run test/real-claude.test.ts",
     "smoke": "electron-vite build && playwright test test/smoke.spec.ts",
     "screens": "electron-vite build && playwright test test/screens.spec.ts",
     "dist": "electron-vite build && electron-builder --win --publish never",

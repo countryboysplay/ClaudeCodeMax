@@ -275,6 +275,17 @@ npm run smoke       # end-to-end test (Playwright + Electron) with a fake claude
 npm run dist        # build dist/ClaudeCodeMax-Setup-<version>.exe
 ```
 
+`npm run e2e:real` runs the parsers against a real Claude Code (two short Haiku/Sonnet prompts, so it uses a little of your plan). It is skipped unless you set `CCM_REAL_CLAUDE=1`.
+
+After each `claude update`, run `e2e:real` and check by hand:
+
+1. Send one prompt. The status bar shows 5h and week %, context, cost and model, and `%APPDATA%\ClaudeCodeMax\usage.json` updates.
+2. Switch model in the dropdown mid-conversation. The same conversation resumes, no new `.jsonl` appears in `~/.claude/projects/<slug>`, and the model shown updates after the next reply.
+3. Toggle Lean or Headroom before typing anything. Claude starts fresh with no "No conversation found".
+4. Type `/clear`, then toggle Lean right away. The pre-clear conversation must not come back.
+5. Tasks tab: a finished request shows its files and closing note, one interrupted with Esc shows Unfinished, and a message typed mid-turn shows under "You added".
+6. Close the session and check the Memory log for a successful distiller run.
+
 Useful environment variables for testing: `CCM_USER_DATA` (use a different settings folder), `CCM_PROJECT` (open this folder on launch), `CCM_FORCE_SETUP=1` / `CCM_SKIP_SETUP=1` (always or never show the wizard), and `CCM_CMD_CLAUDE`, `CCM_CMD_HEADROOM` (swap in other commands; in the Headroom command, `{port}` is replaced with the chosen port). For memory: `CCM_MEMORY_DIR` (use a different memory folder), `CCM_CLAUDE_PROJECTS` (read transcripts from a different folder) and `CCM_CMD_DISTILLER` (swap in another command for the distiller).
 
 <details>

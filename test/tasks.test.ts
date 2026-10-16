@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { parseTranscript, readTasks } from '../src/main/tasks'
@@ -65,6 +65,24 @@ describe('parseTranscript', () => {
 
   it('marks interrupted tasks and tasks with no reply as unfinished', () =>
     expect(tasks.map(t => t.unfinished)).toEqual([false, false, true, true]))
+})
+
+describe('parseTranscript on a real 2.1.301 transcript', () => {
+  const rel = (f: string) => f.replace('C:\\proj\\', '').replace(/\\/g, '/')
+  const tasks = parseTranscript(readFileSync(new URL('./fixtures/transcript-real.jsonl', import.meta.url), 'utf8'), rel)
+
+  it('starts tasks only at typed requests', () =>
+    expect(tasks.map(t => t.asked)).toEqual(['Add a health check', 'Check the build', 'Rename the route']))
+
+  it('reads files, mid-turn messages and the closing note; a quoted interrupt in a tool result is not an interrupt', () => {
+    expect(tasks[0]).toMatchObject({ files: ['src/health.ts'], added: ['also log it'], note: 'Skipped the tests.', unfinished: false, skipFlag: true })
+  })
+
+  it('does not take an API error line as the reply', () => expect(tasks[1]).toMatchObject({ reply: '', unfinished: true }))
+
+  it('marks a real interrupt unfinished', () => expect(tasks[2].unfinished).toBe(true))
+
+  it('ignores api-request-blob lines', () => expect(JSON.stringify(tasks)).not.toContain('BLOB'))
 })
 
 describe('readTasks', () => {
