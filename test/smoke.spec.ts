@@ -47,6 +47,20 @@ test('runs Claude in the project, serves the Savings panel, reports usage, and l
   await expect(win.getByText('5h: 42%')).toBeVisible({ timeout: 15_000 })
   await expect(win.getByText('Context: 31%')).toBeVisible()
 
+  // The model picker switches the running session in place instead of restarting it.
+  await win.getByLabel('Model').selectOption('sonnet')
+  await expect(term).toContainText('echo:/model sonnet')
+
+  // A toggle asks first while the cache is warm, then brings the conversation back with --continue.
+  let asked = ''
+  win.once('dialog', d => {
+    asked = d.message()
+    void d.accept()
+  })
+  await win.getByRole('button', { name: 'Lean on' }).click()
+  await expect(term).toContainText('--model sonnet --continue')
+  expect(asked).toContain('warm cache')
+
   await win.getByRole('tab', { name: 'Savings' }).click()
   await expect(win.locator('webview')).toHaveAttribute('src', /^http:\/\/127\.0\.0\.1:\d+\/dashboard$/)
 

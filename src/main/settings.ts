@@ -7,11 +7,16 @@ export interface MemorySettings {
   indexCap: number
 }
 
+// '' leaves the choice to Claude Code's own settings.
+export const MODELS = ['', 'sonnet', 'opusplan', 'opus'] as const
+export type Model = (typeof MODELS)[number]
+
 export interface Settings {
   recent: string[]
   headroom: boolean
   ponytail: boolean
   lean: boolean
+  model: Model
   skipped: string[]
   split: number
   tab: string
@@ -23,6 +28,7 @@ export const defaults = (): Settings => ({
   headroom: true,
   ponytail: true,
   lean: true,
+  model: '',
   skipped: [],
   split: 0.6,
   tab: 'savings',
@@ -44,6 +50,8 @@ export function loadSettings(file: string): Settings {
   if (typeof s.headroom !== 'boolean') s.headroom = defaults().headroom
   if (typeof s.ponytail !== 'boolean') s.ponytail = defaults().ponytail
   if (typeof s.lean !== 'boolean') s.lean = defaults().lean
+  // Goes into a command line, so only the known values are allowed.
+  if (!MODELS.includes(s.model)) s.model = defaults().model
   if (typeof s.tab !== 'string') s.tab = defaults().tab
   const m: Partial<MemorySettings> = s.memory && typeof s.memory === 'object' && !Array.isArray(s.memory) ? s.memory : {}
   const d = defaults().memory

@@ -49,14 +49,30 @@ function UsageItems({ u }: { u: Usage | null }) {
       {u.fiveHour && <span className="muted">resets {time(u.fiveHour.resetsAt)}</span>}
       {u.week && <Meter label="Week" pct={u.week.pct} title={`Weekly limit, resets ${day(u.week.resetsAt)} ${time(u.week.resetsAt)}`} />}
       {u.context !== undefined && <Meter label="Context" pct={u.context} title="How full this session's context window is" />}
+      {u.context !== undefined && u.context >= 60 && (
+        <>
+          <button title="Summarize the conversation so far into a shorter one (/compact)" onClick={() => window.api.ptyWrite('/compact\r')}>
+            Compact
+          </button>
+          <button
+            title="Start a fresh conversation (/clear)"
+            onClick={() => window.confirm('Clear the conversation and start fresh?') && window.api.ptyWrite('/clear\r')}
+          >
+            Clear
+          </button>
+        </>
+      )}
       {u.cost !== undefined && (
         <span className="item" title="This session at API list prices. On a Max plan you pay the plan price, not this.">
           Session: ${u.cost.toFixed(2)}
         </span>
       )}
       {u.context !== undefined && (
-        <span className="item" title="While the cache is warm, earlier context costs about a tenth. After it goes cold, the next message re-sends everything at full price.">
-          Cache: {cacheMin ? `warm ${cacheMin}m` : 'cold'}
+        <span
+          className={`item ${cacheMin && cacheMin <= 5 ? 'level-warn' : ''}`}
+          title="While the cache is warm, earlier context costs about a tenth. After it goes cold, the next message re-sends everything at full price."
+        >
+          Cache: {!cacheMin ? 'cold' : cacheMin <= 5 ? `cold in ${cacheMin}m` : `warm ${cacheMin}m`}
         </span>
       )}
       {u.model && <span className="item muted">{u.model}</span>}

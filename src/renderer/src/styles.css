@@ -67,6 +67,9 @@ h1[tabindex='-1']:focus-visible { outline: none; } /* programmatic dialog-open f
 .header { grid-area: header; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; padding: 8px 12px; border-bottom: 1px solid var(--border); background: var(--surface); }
 .header label { display: flex; gap: 6px; align-items: center; min-width: 0; flex: 1; }
 .header select { max-width: 60ch; min-width: 220px; overflow: hidden; text-overflow: ellipsis; }
+.header .model-label { flex: 0 0 auto; }
+.header select.model { min-width: 0; }
+.usage button { height: 22px; padding: 0 8px; font-size: 12px; }
 .group { display: inline-flex; gap: 8px; align-items: center; }
 .group.sep { padding-left: 12px; border-left: 1px solid var(--border); }
 .toggle { display: inline-flex; gap: 6px; align-items: center; }

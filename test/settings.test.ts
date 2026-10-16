@@ -44,6 +44,13 @@ describe('loadSettings', () => {
     expect(loadSettings(join(dir, 'missing.json')).lean).toBe(true)
     expect(s.tab).toBe('graph')
   })
+  it('only accepts known models, since the value goes into a command line', () => {
+    const f = join(dir, 'model.json')
+    writeFileSync(f, JSON.stringify({ model: 'opus --dangerously-skip-permissions' }))
+    expect(loadSettings(f).model).toBe('')
+    writeFileSync(f, JSON.stringify({ model: 'opusplan' }))
+    expect(loadSettings(f).model).toBe('opusplan')
+  })
   it('does not share arrays between loads', () => {
     const a = loadSettings(join(dir, 'none.json'))
     a.skipped.push('uv')

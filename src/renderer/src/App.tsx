@@ -20,6 +20,11 @@ function Toggle(props: { label: string; on: boolean; available: boolean; onChang
   )
 }
 
+// Toggles restart Claude. The conversation comes back (--continue), but a warm cache doesn't.
+const restartOk = (s: AppState) =>
+  !(s.usage?.cacheExpiresAt && s.usage.cacheExpiresAt > Date.now() / 1000) ||
+  window.confirm('This restarts Claude. Your conversation comes back, but the warm cache is lost, so your next message costs more. Continue?')
+
 function Header({ state, onSetup }: { state: AppState; onSetup: () => void }) {
   const choose = (v: string) => void (v === '__pick' ? window.api.pickProject() : window.api.openProject(v))
   return (
@@ -36,20 +41,29 @@ function Header({ state, onSetup }: { state: AppState; onSetup: () => void }) {
           <option value="__pick">Open folder…</option>
         </select>
       </label>
+      <label className="model-label">
+        Model
+        <select className="model" value={state.model} onChange={e => void window.api.setModel(e.target.value)}>
+          <option value="">Claude Code default</option>
+          <option value="sonnet">Sonnet</option>
+          <option value="opusplan">Opus plans, Sonnet builds</option>
+          <option value="opus">Opus</option>
+        </select>
+      </label>
       <div role="group" aria-label="Features" className="group">
         <Toggle
           label="Headroom"
           on={state.headroom}
           available={state.installed.headroom !== false}
-          onChange={v => void window.api.setHeadroom(v)}
+          onChange={v => restartOk(state) && void window.api.setHeadroom(v)}
           onInstall={onSetup}
         />
-        <Toggle label="Lean" on={state.lean} available onChange={v => void window.api.setLean(v)} onInstall={onSetup} />
+        <Toggle label="Lean" on={state.lean} available onChange={v => restartOk(state) && void window.api.setLean(v)} onInstall={onSetup} />
         <Toggle
           label="Ponytail"
           on={state.ponytail}
           available={state.installed.ponytail !== false}
-          onChange={v => void window.api.setPonytail(v)}
+          onChange={v => restartOk(state) && void window.api.setPonytail(v)}
           onInstall={onSetup}
         />
       </div>

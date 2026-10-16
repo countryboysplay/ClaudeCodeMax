@@ -25,6 +25,7 @@ export interface AppState {
   headroom: boolean
   ponytail: boolean
   lean: boolean
+  model: string
   split: number
   tab: string
   services: Record<ServiceName, Status>

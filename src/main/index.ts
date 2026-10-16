@@ -7,7 +7,7 @@ import { spawn as spawnPty, type IPty } from '@lydell/node-pty'
 import { refreshPath } from './path'
 import { runShell, killTree, killAll } from './run'
 import { freePort } from './ports'
-import { loadSettings, saveSettings, addRecent, type Settings } from './settings'
+import { loadSettings, saveSettings, addRecent, MODELS, type Model, type Settings } from './settings'
 import { guardWebviews } from './guard'
 import { Service } from './services'
 import { STEPS, check, install, blockedBy, needsWizard } from './setup'
@@ -89,6 +89,7 @@ function state(): AppState {
     headroom: settings.headroom,
     ponytail: settings.ponytail,
     lean: settings.lean,
+    model: settings.model,
     split: settings.split,
     tab: settings.tab,
     services: { headroom: services?.headroom.status ?? 'stopped' },
@@ -109,7 +110,8 @@ function stopClaude(): void {
   if (p) killTree(p.pid)
 }
 
-function launchClaude(): void {
+// `resume` reopens the conversation that was running, so a toggle doesn't throw it away.
+function launchClaude(resume = false): void {
   if (quitting) return
   stopClaude()
   if (!project) return pushState()
@@ -123,7 +125,7 @@ function launchClaude(): void {
   readUsage()
   try {
     // A string is passed to cmd.exe verbatim; /s keeps the inner quotes intact when paths contain spaces.
-    const p = spawnPty(process.env.ComSpec ?? 'cmd.exe', `/s /c ""${override('CLAUDE', 'claude')}" --settings "${writeHooks()}""`, {
+    const p = spawnPty(process.env.ComSpec ?? 'cmd.exe', `/s /c ""${override('CLAUDE', 'claude')}" --settings "${writeHooks()}"${settings.model ? ` --model ${settings.model}` : ''}${resume ? ' --continue' : ''}"`, {
       name: 'xterm-256color',
       cwd: project,
       env,
@@ -247,12 +249,20 @@ function registerIpc(): void {
     save()
     if (settings.headroom) syncServices()
     else services?.headroom.stop()
-    launchClaude()
+    launchClaude(!!pty)
   })
   ipcMain.handle('toggle:lean', (_e, on: unknown) => {
     settings.lean = on === true
     save()
-    launchClaude()
+    launchClaude(!!pty)
+  })
+  ipcMain.handle('model:set', (_e, m: unknown) => {
+    if (!MODELS.includes(m as Model)) return
+    settings.model = m as Model
+    save()
+    // Switch the running session in place: a restart would lose the conversation.
+    if (settings.model) pty?.write(`/model ${settings.model}\r`)
+    pushState()
   })
   ipcMain.handle('toggle:ponytail', async (_e, on: unknown) => {
     const previous = settings.ponytail
@@ -265,7 +275,7 @@ function registerIpc(): void {
       pushState()
       return
     }
-    launchClaude()
+    launchClaude(!!pty)
   })
   ipcMain.handle('service:restart', (_e, n: unknown) => svc(n)?.restart())
   ipcMain.handle('memory:status', async () => ({
@@ -308,6 +318,7 @@ function registerIpc(): void {
   })
   ipcMain.handle('tools:update', async () => {
     // Running exes (headroom.exe, claude.exe) are locked on Windows, so stop everything first.
+    const resume = !!pty
     stopClaude()
     services?.headroom.stop()
     for (const c of UPDATE_CMDS) {
@@ -319,7 +330,7 @@ function registerIpc(): void {
     refreshPath()
     await checkAll()
     syncServices()
-    launchClaude()
+    launchClaude(resume)
   })
 }
 
