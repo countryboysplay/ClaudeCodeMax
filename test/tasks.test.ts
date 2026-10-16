@@ -45,15 +45,7 @@ describe('parseTranscript', () => {
     expect(tasks[0].when).toBe('2026-10-16T10:00:00Z')
   })
 
-  it('flags a skip with no reason, but not one with a reason', () => {
-    expect(tasks[0].skipFlag).toBe(true)
-    expect(tasks[1].skipFlag).toBe(false)
-  })
-
-  it('does not count a comma as a reason in a closing note', () => {
-    const [t] = parseTranscript([user('do it'), said({ type: 'text', text: "I didn't install it, build it or run the tests." })].join('\n'))
-    expect(t.skipFlag).toBe(true)
-  })
+  it('leaves skip detection to the classifier', () => expect(tasks.every(t => t.skip === 'no')).toBe(true))
 
   it('ignores compact summaries', () => expect(tasks.some(t => t.asked.startsWith('This session is being continued'))).toBe(false))
 
@@ -75,7 +67,7 @@ describe('parseTranscript on a real 2.1.301 transcript', () => {
     expect(tasks.map(t => t.asked)).toEqual(['Add a health check', 'Check the build', 'Rename the route']))
 
   it('reads files, mid-turn messages and the closing note; a quoted interrupt in a tool result is not an interrupt', () => {
-    expect(tasks[0]).toMatchObject({ files: ['src/health.ts'], added: ['also log it'], note: 'Skipped the tests.', unfinished: false, skipFlag: true })
+    expect(tasks[0]).toMatchObject({ files: ['src/health.ts'], added: ['also log it'], note: 'Skipped the tests.', unfinished: false, skip: 'no' })
   })
 
   it('does not take an API error line as the reply', () => expect(tasks[1]).toMatchObject({ reply: '', unfinished: true }))
@@ -103,6 +95,18 @@ describe('readTasks', () => {
     expect(tasks.map(t => t.asked)).toEqual(['new', 'old'])
     expect(tasks[0].files).toEqual(['a.ts'])
     expect(tasks[0].checklist).toEqual([{ subject: 'Write a.ts', status: 'completed' }])
+  })
+
+  it('takes each task skip verdict from the verdict function', async () => {
+    const base = mkdtempSync(join(tmpdir(), 'ccm-tasks-'))
+    const project = join(base, 'proj')
+    mkdirSync(join(base, 'projects', slugFor(project)), { recursive: true })
+    writeFileSync(
+      join(base, 'projects', slugFor(project), 's.jsonl'),
+      [user('a', '2026-10-01T00:00:00Z'), said({ type: 'text', text: 'ok' }), user('b', '2026-10-02T00:00:00Z')].join('\n')
+    )
+    const tasks = await readTasks(project, join(base, 'projects'), join(base, 'tasks'), r => (r ? 'yes' : 'no'))
+    expect(tasks.map(t => [t.asked, t.skip])).toEqual([['b', 'no'], ['a', 'yes']])
   })
 
   it('returns nothing for a project with no sessions', async () =>

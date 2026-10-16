@@ -44,7 +44,9 @@ test('runs Claude in the project, serves the Savings panel, reports usage, and l
       CCM_CMD_HEADROOM: stub,
       CCM_MEMORY_DIR: memory,
       CCM_CLAUDE_PROJECTS: cp,
-      CCM_CMD_DISTILLER: `node "${join(fixtures, 'fake-distiller.mjs')}"`
+      CCM_CMD_DISTILLER: `node "${join(fixtures, 'fake-distiller.mjs')}"`,
+      CCM_CMD_CLASSIFIER: `node "${join(fixtures, 'fake-skipcheck.mjs')}"`,
+      CCM_FAKE_SKIP: JSON.stringify({ 'Done.\nSkipped the tests.': [true, false] })
     }
   })
   const win = await app.firstWindow()
@@ -81,7 +83,7 @@ test('runs Claude in the project, serves the Savings panel, reports usage, and l
 
   await win.getByRole('tab', { name: 'Tasks' }).click()
   await expect(win.getByText('Add a login page')).toBeVisible({ timeout: 15_000 })
-  await expect(win.getByText('Skipped: check why')).toBeVisible()
+  await expect(win.getByText('Skipped: check why')).toBeVisible({ timeout: 15_000 })
   await expect(win.getByText('No reason given')).toBeVisible()
 
   const started = readdirSync(pids).map(f => Number(f.split('-')[1]))

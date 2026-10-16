@@ -26,7 +26,7 @@ const api = {
   serviceLog: (name: string): Promise<string[]> => ipcRenderer.invoke('service:log', name),
   memoryStatus: (): Promise<{ log: string[]; queued: number; commits: string[] }> => ipcRenderer.invoke('memory:status'),
   openMemory: (): Promise<string> => ipcRenderer.invoke('memory:open'),
-  tasks: (): Promise<TaskReport | null> => ipcRenderer.invoke('tasks:get'),
+  tasks: (refresh = false): Promise<TaskReport | null> => ipcRenderer.invoke('tasks:get', refresh),
   openTaskFile: (file: string): Promise<void> => ipcRenderer.invoke('tasks:open', file),
   setLayout: (l: { split?: number; tab?: string }): Promise<void> => ipcRenderer.invoke('layout:set', l),
   setupCheck: (): Promise<StepView[]> => ipcRenderer.invoke('setup:check'),
@@ -38,6 +38,7 @@ const api = {
   onPtyExit: on<[]>('pty:exit'),
   onState: on<[AppState]>('state'),
   onSetupLog: on<[string]>('setup:log'),
+  onTasksUpdated: on<[]>('tasks:updated'),
   onMenu: on<['update' | 'setup']>('menu')
 }
 

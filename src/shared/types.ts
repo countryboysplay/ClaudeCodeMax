@@ -61,7 +61,7 @@ export interface Task {
   note: string
   reply: string
   unfinished: boolean
-  skipFlag: boolean
+  skip: 'yes' | 'no' | 'pending' | 'unchecked'
   checklist: { subject: string; status: string }[]
 }
 

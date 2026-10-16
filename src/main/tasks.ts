@@ -6,11 +6,7 @@ import type { Task } from '../shared/types'
 
 const MAX_TASKS = 200
 const EDIT_TOOLS = new Set(['Write', 'Edit', 'NotebookEdit'])
-const SKIP = /\b(skip|skipped|skipping|didn't|did not|not checked|deferred|later|left out|out of scope)\b/i
 const INTERRUPT = '[Request interrupted'
-
-// Unlike code comments, a comma in prose is not a reason ("I didn't build it, test it or run it").
-const proseReason = (s: string) => / — | - /.test(s) || /\b(because|since|until|so that|to avoid|when)\b/i.test(s)
 
 const lastParagraph = (s: string) => (s.trim().split(/\n\s*\n/).pop() ?? '').trim().slice(0, 600)
 
@@ -53,7 +49,7 @@ export function parseTranscript(text: string, rel: (file: string) => string = f 
       if (asked === null) continue
       // A message queued mid-turn that ran as its own request isn't something added to the previous one.
       if (t) t.added = t.added.filter(a => a !== asked)
-      t = { when: String(o.timestamp ?? ''), asked, added: [], files: [], note: '', reply: '', unfinished: false, skipFlag: false, checklist: [] }
+      t = { when: String(o.timestamp ?? ''), asked, added: [], files: [], note: '', reply: '', unfinished: false, skip: 'no', checklist: [] }
       tasks.push(t)
     } else if (o.type === 'assistant' && t && Array.isArray(o.message?.content)) {
       for (const b of o.message.content) {
@@ -66,7 +62,6 @@ export function parseTranscript(text: string, rel: (file: string) => string = f 
   for (const x of tasks) {
     x.note = lastParagraph(x.reply)
     if (!x.reply) x.unfinished = true
-    x.skipFlag = SKIP.test(x.note) && !proseReason(x.note)
   }
   // Local commands like /context or /model get no reply and change nothing: not tasks.
   return tasks.filter(x => !(x.asked.startsWith('/') && !x.reply && !x.files.length))
@@ -88,7 +83,7 @@ function readChecklist(dir: string): Task['checklist'] {
 }
 
 // Reads one transcript at a time so a large project (100+ MB) doesn't freeze the window.
-export async function readTasks(projectDir: string, claudeProjects: string, claudeTasks: string): Promise<Task[]> {
+export async function readTasks(projectDir: string, claudeProjects: string, claudeTasks: string, verdict: (reply: string) => Task['skip'] = () => 'no'): Promise<Task[]> {
   const dir = join(claudeProjects, slugFor(projectDir))
   if (!existsSync(dir)) return []
   const rel = (f: string) => {
@@ -109,5 +104,7 @@ export async function readTasks(projectDir: string, claudeProjects: string, clau
     if (last) last.checklist = readChecklist(join(claudeTasks, basename(f, '.jsonl')))
     all.push(...tasks)
   }
-  return all.sort((a, b) => b.when.localeCompare(a.when)).slice(0, MAX_TASKS)
+  const shown = all.sort((a, b) => b.when.localeCompare(a.when)).slice(0, MAX_TASKS)
+  for (const t of shown) t.skip = verdict(t.reply)
+  return shown
 }

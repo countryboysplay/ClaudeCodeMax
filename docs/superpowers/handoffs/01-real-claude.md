@@ -20,7 +20,7 @@ Read `00-findings-and-process.md` first. Plan: `../plans/2026-10-16-finding-01-r
 
 ## Not verified
 - Manual checklist (README) not done: status bar in the live app, dropdown model switch, Lean/Headroom toggle, `/clear` then Lean (item 4 unknown), Tasks tab, Memory log. `-p` mode has no status line, so the e2e cannot cover these.
-- `npm run smoke` not run.
+- `npm run smoke`: passed (1 test, 5.6 s) after the commit; uses the fake claude, so it adds nothing about real Claude.
 - The memory-slice API-error assertion (`session limit`) was never seen failing on its own, because the compact-summary assertion failed first.
 - Fixtures are hand-written with real key shapes and invented values; they show the parsers handle those shapes, not what Claude emits today. The e2e covers that gap for the simple path only (no tools, errors, compaction).
 

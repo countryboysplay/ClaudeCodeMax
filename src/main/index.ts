@@ -18,6 +18,7 @@ import { parseUsage, resumeFlag } from './usage'
 import { leanSettings, readLeanInputs } from './lean'
 import { readTasks } from './tasks'
 import { scanDeferred } from './deferred'
+import { SkipChecker } from './skipcheck'
 import { isInside } from './security'
 import type { AppState, InitResult, InstallResult, ServiceName, StepView, TaskReport, Usage } from '../shared/types'
 
@@ -40,6 +41,7 @@ let size = { cols: 120, rows: 30 }
 let installed: Record<string, boolean> = {}
 let services: Record<ServiceName, Service> | null = null
 let memory: MemoryRunner | null = null
+let skips: SkipChecker | null = null
 const ports: Record<ServiceName, number> = { headroom: 8787 }
 let quitting = false
 let usage: Usage | null = null
@@ -293,9 +295,20 @@ function registerIpc(): void {
     commits: (await git(memDir(), 'log', '-15', '--format=%cr — %s').catch(() => '')).split('\n').filter(Boolean)
   }))
   ipcMain.handle('memory:open', () => shell.openPath(memDir()))
-  ipcMain.handle('tasks:get', async (): Promise<TaskReport | null> => {
+  ipcMain.handle('tasks:get', async (_e, refresh: unknown): Promise<TaskReport | null> => {
     if (!project) return null
-    const [tasks, scan] = await Promise.all([readTasks(project, claudeProjectsDir(), join(homedir(), '.claude', 'tasks')), scanDeferred(project)])
+    skips ??= new SkipChecker({
+      file: join(app.getPath('userData'), 'skip-cache.json'),
+      command: override('CLASSIFIER', 'claude'),
+      model: settings.memory.model,
+      cwd: memDir(),
+      onUpdate: () => send('tasks:updated')
+    })
+    if (refresh === true) skips.rearm()
+    const [tasks, scan] = await Promise.all([
+      readTasks(project, claudeProjectsDir(), join(homedir(), '.claude', 'tasks'), r => skips!.verdict(r)),
+      scanDeferred(project)
+    ])
     return { tasks, ...scan }
   })
   ipcMain.handle('tasks:open', (_e, file: unknown) => {

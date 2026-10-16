@@ -8,7 +8,8 @@ function TaskCard({ t }: { t: Task }) {
       <div className="task-top">
         <time dateTime={t.when}>{t.when ? new Date(t.when).toLocaleString() : ''}</time>
         {t.unfinished && <span className="badge warn">Unfinished</span>}
-        {t.skipFlag && <span className="badge warn">Skipped: check why</span>}
+        {t.skip === 'yes' && <span className="badge warn">Skipped: check why</span>}
+        {t.skip === 'pending' && <span className="badge muted">Checking for skips…</span>}
       </div>
       <p className={open ? 'asked' : 'asked clamp'}>{t.asked}</p>
       {t.added.map((a, i) => (
@@ -49,11 +50,11 @@ export function TasksView({ project }: { project: string | null }) {
   const [r, setR] = useState<TaskReport | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
-  const load = async () => {
+  const load = async (refresh = false) => {
     setBusy(true)
     setError('')
     try {
-      setR(await window.api.tasks())
+      setR(await window.api.tasks(refresh))
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err))
     } finally {
@@ -64,6 +65,7 @@ export function TasksView({ project }: { project: string | null }) {
     setR(null)
     if (project) void load()
   }, [project])
+  useEffect(() => window.api.onTasksUpdated(() => void load()), [])
   if (!project)
     return (
       <div className="empty">
@@ -84,11 +86,12 @@ export function TasksView({ project }: { project: string | null }) {
       </p>
     )
   const noReason = r.deferred.filter(d => !d.reason).length
+  const unchecked = r.tasks.filter(t => t.skip === 'unchecked').length
   return (
     <div className="tasks">
       <div className="tasks-head">
         <h2>Tasks</h2>
-        <button onClick={() => void load()} disabled={busy}>
+        <button onClick={() => void load(true)} disabled={busy}>
           {busy ? 'Refreshing…' : 'Refresh'}
         </button>
       </div>
@@ -117,6 +120,11 @@ export function TasksView({ project }: { project: string | null }) {
         </ol>
       ) : (
         <p className="muted">No Claude sessions found for this project yet.</p>
+      )}
+      {unchecked > 0 && (
+        <p className="muted">
+          {unchecked} {unchecked === 1 ? 'reply' : 'replies'} couldn't be checked for skips (Claude unavailable or limited). Refresh to try again.
+        </p>
       )}
       <p className="muted">Files changed through Bash or PowerShell commands aren't listed.</p>
     </div>

@@ -22,7 +22,10 @@ Stable file. Read first. Do not edit except to tick a finding's status line at t
 11. Memory-queue indicator (pending, failed, last run).
 12. Repo root tidy: confirm dist, out, test-results are gitignored; decide on repos.md.
 13. Two global memory notes that belong to a project (memory: DungeonMasterAI delegation rule, CURRENT_STAGE.md rule).
+14. Tasks tab = open work, not files edited (user: "what was not done" when a plan says finish before moving on). Default view: unfinished checklist items (~/.claude/tasks/<session>/N.json, currently only shown on the last request), interrupted requests, skip-with-no-reason closers (finding 2). Finished work and chat behind "Show all". Run after finding 2 (same files). DECIDED (user): both the checklist and prose plan files (docs/superpowers/plans); comparing plan steps with what was done needs AI. Plan it as its own finding after 2, reusing the finding 2 classifier/cache.
 
 ## Status
-- [~] 1 (parser fixes + real e2e pass, uncommitted; manual checklist pending; handoff 01)  - [ ] 2  - [ ] 3  - [ ] 4  - [ ] 5  - [ ] 6  - [ ] 7
-- [ ] 8  - [ ] 9  - [ ] 10  - [ ] 11  - [ ] 12  - [ ] 13
+- [~] 1 (parser fixes + real e2e pass, committed 6bd4944; manual checklist pending; handoff 01)  - [x] 2 (done, uncommitted; handoff 02)  - [ ] 3  - [ ] 4  - [ ] 5  - [ ] 6  - [ ] 7
+- [ ] 8  - [ ] 9  - [ ] 10  - [ ] 11  - [ ] 12  - [ ] 13  - [ ] 14
+
+Finding 2 decisions (user): defaults; classifier is AI (Haiku via the distiller pattern), regex removed.
