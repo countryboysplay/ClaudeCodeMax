@@ -37,8 +37,10 @@ export const defaults = (): Settings => ({
 
 export function loadSettings(file: string): Settings {
   let parsed: Partial<Settings> = {}
+  let existed = false
   try {
     const v = JSON.parse(readFileSync(file, 'utf8'))
+    existed = true
     if (v && typeof v === 'object' && !Array.isArray(v)) parsed = v
   } catch {
     // missing or corrupt: fall back to defaults
@@ -49,7 +51,8 @@ export function loadSettings(file: string): Settings {
   if (typeof s.split !== 'number' || !Number.isFinite(s.split) || s.split < 0.2 || s.split > 0.8) s.split = defaults().split
   if (typeof s.headroom !== 'boolean') s.headroom = defaults().headroom
   if (typeof s.ponytail !== 'boolean') s.ponytail = defaults().ponytail
-  if (typeof s.lean !== 'boolean') s.lean = defaults().lean
+  // Lean removes plugins and built-in skills, so it's only on by default for new installs.
+  if (typeof s.lean !== 'boolean' || !('lean' in parsed)) s.lean = existed ? false : defaults().lean
   // Goes into a command line, so only the known values are allowed.
   if (!MODELS.includes(s.model)) s.model = defaults().model
   if (typeof s.tab !== 'string') s.tab = defaults().tab

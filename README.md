@@ -131,13 +131,13 @@ If Headroom's default port is taken, the app picks a free one and passes it to b
 | Where | What it does |
 |---|---|
 | **Project ▾** (header) | Pick a folder or reopen a recent one (the last 10 are saved). **File → Open Project…** or <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>O</kbd> does the same. |
-| **Model ▾** (header) | **Sonnet**, **Opus plans, Sonnet builds** (`opusplan`) or **Opus**. Switches the running session in place with `/model`, so the conversation stays, and starts later sessions on that model. *Claude Code default* leaves the choice to your own Claude Code settings. Sonnet costs the least; `opusplan` keeps Opus for planning only. |
+| **Model ▾** (header) | **Sonnet**, **Opus plans, Sonnet builds** (`opusplan`) or **Opus**. Restarts Claude on that model and resumes the same conversation. Switching model always starts a fresh prompt cache, so it asks first while the cache is warm. *Claude Code default* leaves the choice to your own Claude Code settings. Sonnet costs the least; `opusplan` keeps Opus for planning only. |
 | **Headroom on/off** | Routes Claude through the Headroom proxy, or not. Claude restarts so the change takes effect. |
 | **Lean on/off** | Keeps skill descriptions, plugins and claude.ai connectors out of Claude's context in app sessions. See [Lean mode](#lean-mode). Claude restarts so the change takes effect. |
 | **Ponytail on/off** | Turns the Ponytail plugin on or off in Claude Code, then restarts Claude. |
 | **Ponytail review / audit** | Types `/ponytail-review` (over-engineering review of your changes) or `/ponytail-audit` (whole-repo audit) into Claude. |
 | **Usage bar** (bottom) | Your 5-hour and weekly plan limits, context use, session cost at API prices and cache state. Hover an item for details. It fills in after Claude's first reply in a session. The cache turns amber in its last 5 minutes (*cold in 3m*), so you can send your next message before it expires. |
-| **Compact / Clear** (usage bar) | Shown once the context is 60% full. **Compact** runs `/compact` to shrink the conversation; **Clear** runs `/clear` after asking. Long contexts cost more per message and make Claude less accurate. |
+| **"type /compact between tasks"** (usage bar) | Shown once the context is 60% full. Long contexts cost more per message and make Claude less accurate. It's a hint rather than a button, because typing into the terminal for you could land in a half-typed prompt or answer a permission question. |
 | **Divider** | Drag it, or focus it and use the arrow keys, to resize the terminal and the panels. The app remembers the split and the last tab you used. |
 | **Tools → Check for tool updates** | Stops the tools, runs `uv tool upgrade headroom-ai`, `claude update` and `claude plugin update ponytail@ponytail`, then starts everything again. The output is shown as it runs. |
 | **Tools → Re-run setup** | Opens the setup wizard again, for example to install a tool you skipped. |
@@ -147,13 +147,13 @@ If Headroom's default port is taken, the app picks a free one and passes it to b
 | <kbd>F6</kbd> | The terminal sends every key to Claude, including <kbd>Tab</kbd>. Press <kbd>F6</kbd> to move keyboard focus out of the terminal. |
 | <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>C</kbd> | Copies the selected text in the terminal. |
 
-The Headroom, Lean and Ponytail toggles restart Claude with `--continue`, so your conversation comes back. While the prompt cache is still warm they ask first, because the restart loses the cache and makes the next message cost more.
+The model picker and the Headroom, Lean and Ponytail toggles restart Claude with `--resume <this session's id>`, so your conversation comes back: this exact session, never an older one or one from another terminal. Before Claude has replied in a session there's nothing to resume, so they start fresh. While the prompt cache is still warm they ask first, because the restart loses the cache and makes the next message cost more.
 
 When Claude exits, the terminal shows **Session ended** with a **Restart** button. If the Headroom proxy goes down while Claude is using it, a banner lets you restart Headroom or relaunch Claude without it. The app never switches Claude off the proxy without asking.
 
 ## Lean mode
 
-Every skill description, plugin and MCP connector Claude Code loads is re-sent on **every turn**, whether Claude uses it or not. On a typical setup that's more than half of a fresh session's context. Lean mode (on by default) trims it for the sessions the app launches:
+Every skill description, plugin and MCP connector Claude Code loads is re-sent on **every turn**, whether Claude uses it or not. On a typical setup that's more than half of a fresh session's context. Lean mode trims it for the sessions the app launches. It's on by default for new installs; if you upgraded from an earlier version, it starts off so nothing you use disappears without warning:
 
 | What | Lean mode |
 |---|---|
@@ -172,7 +172,7 @@ The **Tasks** tab shows what Claude did in the open project and what it left for
 **Each task** is one request you typed (newest first, up to 200), read from the project's Claude Code session logs in `%USERPROFILE%\.claude\projects`:
 
 - **You asked**: your request, plus anything you added while Claude was working.
-- **Changed**: the files Claude wrote or edited. Click one to open it. Files changed through Bash or PowerShell commands aren't listed.
+- **Changed**: the files Claude wrote or edited. Click one to show it in Explorer (files are never opened, so a script can't run by accident). Files changed through Bash or PowerShell commands aren't listed.
 - **Claude's note**: the last paragraph of Claude's final reply. With Ponytail on, that's where Claude says what it skipped and what risks remain. **Show full reply** shows the rest.
 - **Unfinished**: you interrupted it, or the session ended before Claude replied.
 - **Skipped: check why**: the note says something was skipped or put off, without saying why.

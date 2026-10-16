@@ -69,7 +69,6 @@ h1[tabindex='-1']:focus-visible { outline: none; } /* programmatic dialog-open f
 .header select { max-width: 60ch; min-width: 220px; overflow: hidden; text-overflow: ellipsis; }
 .header .model-label { flex: 0 0 auto; }
 .header select.model { min-width: 0; }
-.usage button { height: 22px; padding: 0 8px; font-size: 12px; }
 .group { display: inline-flex; gap: 8px; align-items: center; }
 .group.sep { padding-left: 12px; border-left: 1px solid var(--border); }
 .toggle { display: inline-flex; gap: 6px; align-items: center; }

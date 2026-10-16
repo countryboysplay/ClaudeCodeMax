@@ -22,7 +22,13 @@ async function listFiles(dir: string): Promise<string[]> {
     // not a git repo, or git missing: walk the folder instead
     const out: string[] = []
     const walk = (rel: string): void => {
-      for (const d of readdirSync(join(dir, rel), { withFileTypes: true })) {
+      let entries
+      try {
+        entries = readdirSync(join(dir, rel), { withFileTypes: true })
+      } catch {
+        return // missing or protected folder: skip it rather than fail the whole scan
+      }
+      for (const d of entries) {
         if (out.length > MAX_FILES) return
         const p = rel ? `${rel}/${d.name}` : d.name
         if (d.isDirectory()) {

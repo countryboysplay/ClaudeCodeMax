@@ -105,7 +105,7 @@ describe('MemoryRunner', () => {
     expect(w.calls()).toEqual(['distill'])
   })
 
-  it('skips a job that fails at two app starts so it cannot block the queue', async () => {
+  it('moves a job that fails at two app starts to the back of the queue, keeping its place in the transcript', async () => {
     const w = world()
     const boot = w.make()
     await boot.init()
@@ -118,11 +118,39 @@ describe('MemoryRunner', () => {
     expect(readQueue(w.root)).toHaveLength(1)
     first.stop()
     const second = w.make()
-    await second.drain() // second start: fails again, skipped
-    expect(readQueue(w.root)).toEqual([])
-    expect(second.log).toContain('Skipped s1.jsonl after it failed at two app starts.')
+    await second.drain() // second start: fails again, moved behind everything else
+    expect(readQueue(w.root)).toHaveLength(1) // not lost
+    expect(second.log).toContain('Moved s1.jsonl to the back of the queue after it failed at two app starts.')
     expect(Object.values(readState(w.root).failures)).toEqual([])
-    expect(Object.values(readState(w.root).offsets)[0]).toBeGreaterThan(0)
+    expect(Object.values(readState(w.root).offsets)).toEqual([]) // nothing marked as read
+    expect(w.calls()).toEqual(['distill', 'distill']) // once per start, no retry loop
+  })
+
+  it('rolls back and clears the in-flight marker when a run throws', async () => {
+    const w = world()
+    const boot = w.make()
+    await boot.init()
+    boot.stop()
+    w.say('x'.repeat(9000))
+    enqueue(w.root, { kind: 'distill', transcript: w.transcript })
+    const r = new MemoryRunner({
+      root: w.root,
+      claudeProjects: join(w.base, 'claude-projects'),
+      command: fake,
+      model: 'haiku',
+      dailyCap: 30,
+      indexCap: 60,
+      today: () => DAY,
+      run: async () => {
+        writeFileSync(join(w.root, 'topics', 'half.md'), 'partial')
+        throw new Error('spawn failed')
+      }
+    })
+    runners.push(r)
+    await r.drain()
+    expect(existsSync(join(w.root, 'topics', 'half.md'))).toBe(false)
+    expect(readState(w.root).inFlight).toBe(null)
+    expect(r.log).toContain('Memory job failed: spawn failed')
   })
 
   it('leaves jobs queued once the daily cap is reached', async () => {

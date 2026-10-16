@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 
 const fixtures = resolve('test/fixtures')
+const SESSION = '0e6bcd13-5fed-4526-96cb-5ba76720d8e3' // fake-claude's status line session_id
 const alive = (pid: number) => {
   try {
     process.kill(pid, 0)
@@ -30,6 +31,7 @@ test('runs Claude in the project, serves the Savings panel, reports usage, and l
     ].join('\n')
   )
   writeFileSync(join(project, 'a.ts'), '// shortcut: no retry\n')
+  writeFileSync(join(sessions, `${SESSION}.jsonl`), '') // the session fake-claude reports, so it can be resumed
   const app = await electron.launch({
     args: ['.'],
     env: {
@@ -59,19 +61,20 @@ test('runs Claude in the project, serves the Savings panel, reports usage, and l
   await expect(win.getByText('5h: 42%')).toBeVisible({ timeout: 15_000 })
   await expect(win.getByText('Context: 31%')).toBeVisible()
 
-  // The model picker switches the running session in place instead of restarting it.
-  await win.getByLabel('Model').selectOption('sonnet')
-  await expect(term).toContainText('echo:/model sonnet')
-
-  // A toggle asks first while the cache is warm, then brings the conversation back with --continue.
-  let asked = ''
-  win.once('dialog', d => {
-    asked = d.message()
+  // Model and toggles restart Claude, ask first while the cache is warm, and resume this exact session.
+  const asked: string[] = []
+  win.on('dialog', d => {
+    asked.push(d.message())
     void d.accept()
   })
+  await win.getByLabel('Model').selectOption('sonnet')
+  await expect(term).toContainText(`--model sonnet --resume ${SESSION}`)
+  await expect(win.getByText(/Cache: (warm|cold in)/)).toBeVisible({ timeout: 15_000 }) // the relaunched session reported again
   await win.getByRole('button', { name: 'Lean on' }).click()
-  await expect(term).toContainText('--model sonnet --continue')
-  expect(asked).toContain('warm cache')
+  await expect(win.getByRole('button', { name: 'Lean off' })).toBeVisible()
+  await expect(term).toContainText(`--resume ${SESSION}`)
+  expect(asked).toHaveLength(2)
+  expect(asked[0]).toContain('warm cache')
 
   await win.getByRole('tab', { name: 'Savings' }).click()
   await expect(win.locator('webview')).toHaveAttribute('src', /^http:\/\/127\.0\.0\.1:\d+\/dashboard$/)

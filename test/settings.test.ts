@@ -24,7 +24,7 @@ describe('loadSettings', () => {
   it('repairs wrong-typed split, headroom, ponytail and tab to defaults', () => {
     const f = join(dir, 'wrong-rest.json')
     writeFileSync(f, JSON.stringify({ split: null, headroom: 'false', ponytail: 1, tab: 5 }))
-    expect(loadSettings(f)).toEqual(defaults())
+    expect(loadSettings(f)).toEqual({ ...defaults(), lean: false }) // an existing file predates Lean
   })
   it('repairs a non-numeric split, and a split outside [0.2, 0.8]', () => {
     const f1 = join(dir, 'split-nan.json')
@@ -50,6 +50,12 @@ describe('loadSettings', () => {
     expect(loadSettings(f).model).toBe('')
     writeFileSync(f, JSON.stringify({ model: 'opusplan' }))
     expect(loadSettings(f).model).toBe('opusplan')
+  })
+  it('keeps Lean off for an existing settings file that predates it, on for a fresh install', () => {
+    const f = join(dir, 'pre-lean.json')
+    writeFileSync(f, JSON.stringify({ recent: [] }))
+    expect(loadSettings(f).lean).toBe(false)
+    expect(loadSettings(join(dir, 'fresh-install.json')).lean).toBe(true)
   })
   it('does not share arrays between loads', () => {
     const a = loadSettings(join(dir, 'none.json'))

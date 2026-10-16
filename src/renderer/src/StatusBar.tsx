@@ -49,19 +49,8 @@ function UsageItems({ u }: { u: Usage | null }) {
       {u.fiveHour && <span className="muted">resets {time(u.fiveHour.resetsAt)}</span>}
       {u.week && <Meter label="Week" pct={u.week.pct} title={`Weekly limit, resets ${day(u.week.resetsAt)} ${time(u.week.resetsAt)}`} />}
       {u.context !== undefined && <Meter label="Context" pct={u.context} title="How full this session's context window is" />}
-      {u.context !== undefined && u.context >= 60 && (
-        <>
-          <button title="Summarize the conversation so far into a shorter one (/compact)" onClick={() => window.api.ptyWrite('/compact\r')}>
-            Compact
-          </button>
-          <button
-            title="Start a fresh conversation (/clear)"
-            onClick={() => window.confirm('Clear the conversation and start fresh?') && window.api.ptyWrite('/clear\r')}
-          >
-            Clear
-          </button>
-        </>
-      )}
+      {/* A hint, not a button: typing into the terminal for the user could land in a half-typed prompt or answer a permission dialog. */}
+      {u.context !== undefined && u.context >= 60 && <span className="muted">type /compact between tasks</span>}
       {u.cost !== undefined && (
         <span className="item" title="This session at API list prices. On a Max plan you pay the plan price, not this.">
           Session: ${u.cost.toFixed(2)}

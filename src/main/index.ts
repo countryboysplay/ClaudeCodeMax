@@ -12,9 +12,9 @@ import { guardWebviews } from './guard'
 import { Service } from './services'
 import { STEPS, check, install, blockedBy, needsWizard } from './setup'
 import { MemoryRunner } from './memory/runner'
-import { claudeProjectsDir, memDir } from './memory/files'
+import { claudeProjectsDir, memDir, slugFor } from './memory/files'
 import { git, readQueue } from './memory/store'
-import { parseUsage } from './usage'
+import { parseUsage, resumeFlag } from './usage'
 import { leanSettings, readLeanInputs } from './lean'
 import { readTasks } from './tasks'
 import { scanDeferred } from './deferred'
@@ -118,6 +118,8 @@ function launchClaude(resume = false): void {
   if (quitting) return
   stopClaude()
   if (!project) return pushState()
+  // Read before sessionStart moves on: after that, the old session's id no longer counts as current.
+  const resumeArg = resume ? resumeFlag(usage?.sessionId, join(claudeProjectsDir(), slugFor(project))) : ''
   const env: Record<string, string> = { ...(process.env as Record<string, string>) }
   ptyUsesHeadroom = settings.headroom && installed.headroom !== false
   if (ptyUsesHeadroom) env.ANTHROPIC_BASE_URL = `http://127.0.0.1:${ports.headroom}`
@@ -128,7 +130,7 @@ function launchClaude(resume = false): void {
   readUsage()
   try {
     // A string is passed to cmd.exe verbatim; /s keeps the inner quotes intact when paths contain spaces.
-    const p = spawnPty(process.env.ComSpec ?? 'cmd.exe', `/s /c ""${override('CLAUDE', 'claude')}" --settings "${writeHooks()}"${settings.model ? ` --model ${settings.model}` : ''}${resume ? ' --continue' : ''}"`, {
+    const p = spawnPty(process.env.ComSpec ?? 'cmd.exe', `/s /c ""${override('CLAUDE', 'claude')}" --settings "${writeHooks()}"${settings.model ? ` --model ${settings.model}` : ''}${resumeArg}"`, {
       name: 'xterm-256color',
       cwd: project,
       env,
@@ -265,9 +267,9 @@ function registerIpc(): void {
     if (!MODELS.includes(m as Model)) return
     settings.model = m as Model
     save()
-    // Switch the running session in place: a restart would lose the conversation.
-    if (settings.model) pty?.write(`/model ${settings.model}\r`)
-    pushState()
+    // Restart rather than typing /model into the terminal, which could land in a half-typed
+    // prompt or answer a permission dialog. The conversation comes back with --resume.
+    launchClaude(!!pty)
   })
   ipcMain.handle('toggle:ponytail', async (_e, on: unknown) => {
     const previous = settings.ponytail
@@ -295,8 +297,9 @@ function registerIpc(): void {
     return { tasks, ...scan }
   })
   ipcMain.handle('tasks:open', (_e, file: unknown) => {
-    // Only files inside the open project: the path comes from transcripts and source comments.
-    if (project && typeof file === 'string' && isInside(project, file)) void shell.openPath(resolve(project, file))
+    // Only files inside the open project, and only revealed in Explorer, never opened: the path comes from
+    // transcripts and source comments, and opening a .bat or .exe would run it.
+    if (project && typeof file === 'string' && isInside(project, file)) shell.showItemInFolder(resolve(project, file))
   })
   ipcMain.handle('service:log', (_e, n: unknown) => (n === 'memory' ? (memory?.log ?? []) : (svc(n)?.log ?? [])))
   ipcMain.handle('layout:set', (_e, l: { split?: unknown; tab?: unknown } | undefined) => {

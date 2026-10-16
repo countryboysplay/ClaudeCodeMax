@@ -43,7 +43,7 @@ function Header({ state, onSetup }: { state: AppState; onSetup: () => void }) {
       </label>
       <label className="model-label">
         Model
-        <select className="model" value={state.model} onChange={e => void window.api.setModel(e.target.value)}>
+        <select className="model" value={state.model} onChange={e => restartOk(state) && void window.api.setModel(e.target.value)}>
           <option value="">Claude Code default</option>
           <option value="sonnet">Sonnet</option>
           <option value="opusplan">Opus plans, Sonnet builds</option>

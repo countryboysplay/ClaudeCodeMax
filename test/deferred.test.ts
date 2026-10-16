@@ -13,6 +13,9 @@ describe('hasReason', () => {
 })
 
 describe('scanDeferred', () => {
+  it('returns nothing instead of throwing when the folder cannot be read', async () =>
+    expect(await scanDeferred(join(tmpdir(), 'ccm-missing-folder'))).toEqual({ deferred: [], scanCapped: false }))
+
   it('finds comment markers, puts the ones with no reason first, and skips noise', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'ccm-def-'))
     writeFileSync(join(dir, 'a.ts'), 'const x = 1\n// shortcut: one retry only, add backoff when it flakes\n// TODO handle errors\n')

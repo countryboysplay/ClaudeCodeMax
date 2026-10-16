@@ -97,8 +97,10 @@ export class MemoryRunner {
     if (this.busy || this.halted) return
     this.busy = true
     const { root } = this.o
+    const movedBack = new Set<string>()
     try {
       for (let job = readQueue(root)[0]; job && !this.halted; job = readQueue(root)[0]) {
+        if (movedBack.has(pathKey(job.kind === 'distill' ? job.transcript : job.file))) break // the rest already failed this start
         const s = readState(root)
         if (s.runs.day !== this.day()) s.runs = { day: this.day(), count: 0 }
         writeState(root, s)
@@ -125,11 +127,17 @@ export class MemoryRunner {
             this.halted = true // usually offline: retried at the next app start
             break
           }
-          // Failed at two separate starts: skip it so it can't block every job queued behind it.
+          // Failed at two separate starts: move it behind everything else so it can't block the queue.
+          // Its offset stays put, so nothing in the transcript is lost if it later succeeds.
           delete st.failures[key]
-          if (job.kind === 'distill' && existsSync(target)) st.offsets[key] = statSync(target).size
-          this.say(`Skipped ${basename(target)} after it failed at two app starts.`)
-        } else delete st.failures[key]
+          writeState(root, st)
+          removeJob(root, job)
+          enqueue(root, job)
+          movedBack.add(key)
+          this.say(`Moved ${basename(target)} to the back of the queue after it failed at two app starts.`)
+          continue
+        }
+        delete st.failures[key]
         writeState(root, st)
         removeJob(root, job)
       }

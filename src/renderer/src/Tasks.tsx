@@ -20,7 +20,7 @@ function TaskCard({ t }: { t: Task }) {
         <p className="files">
           Changed:{' '}
           {t.files.map(f => (
-            <button key={f} className="link" onClick={() => void window.api.openTaskFile(f)}>
+            <button key={f} className="link" title="Show in folder" onClick={() => void window.api.openTaskFile(f)}>
               {f}
             </button>
           ))}
@@ -48,10 +48,17 @@ function TaskCard({ t }: { t: Task }) {
 export function TasksView({ project }: { project: string | null }) {
   const [r, setR] = useState<TaskReport | null>(null)
   const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
   const load = async () => {
     setBusy(true)
-    setR(await window.api.tasks())
-    setBusy(false)
+    setError('')
+    try {
+      setR(await window.api.tasks())
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err))
+    } finally {
+      setBusy(false)
+    }
   }
   useEffect(() => {
     setR(null)
@@ -61,6 +68,13 @@ export function TasksView({ project }: { project: string | null }) {
     return (
       <div className="empty">
         <p>Open a project to see its tasks.</p>
+      </div>
+    )
+  if (error)
+    return (
+      <div className="empty" role="alert">
+        <p>Couldn't read this project's sessions: {error}</p>
+        <button onClick={() => void load()}>Try again</button>
       </div>
     )
   if (!r)
@@ -86,7 +100,7 @@ export function TasksView({ project }: { project: string | null }) {
         <ul>
           {r.deferred.map(d => (
             <li key={`${d.file}:${d.line}`}>
-              <button className="link" onClick={() => void window.api.openTaskFile(d.file)}>
+              <button className="link" title="Show in folder" onClick={() => void window.api.openTaskFile(d.file)}>
                 {d.file}:{d.line}
               </button>{' '}
               {!d.reason && <span className="badge bad">No reason given</span>} <span className="muted">{d.marker}</span> {d.text}

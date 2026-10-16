@@ -25,6 +25,8 @@ const transcript = [
   user([{ type: 'tool_result', content: '' }, { type: 'text', text: '[Request interrupted by user for tool use]' }]),
   user('side question', '2026-10-16T12:30:00Z', { isSidechain: true }),
   user('<command-name>/context</command-name>', '2026-10-16T12:45:00Z'),
+  user('This session is being continued from a previous conversation...', '2026-10-16T12:50:00Z', { isCompactSummary: true, isVisibleInTranscriptOnly: true }),
+  line({ type: 'queue-operation', operation: 'enqueue', content: 'Last one' }),
   user('Last one', '2026-10-16T13:00:00Z'),
   'not json'
 ].join('\n')
@@ -47,6 +49,16 @@ describe('parseTranscript', () => {
     expect(tasks[0].skipFlag).toBe(true)
     expect(tasks[1].skipFlag).toBe(false)
   })
+
+  it('does not count a comma as a reason in a closing note', () => {
+    const [t] = parseTranscript([user('do it'), said({ type: 'text', text: "I didn't install it, build it or run the tests." })].join('\n'))
+    expect(t.skipFlag).toBe(true)
+  })
+
+  it('ignores compact summaries', () => expect(tasks.some(t => t.asked.startsWith('This session is being continued'))).toBe(false))
+
+  it('does not list a queued message as added when it ran as the next request', () =>
+    expect(tasks.flatMap(t => t.added)).toEqual(['make it blue']))
 
   it('drops local slash commands that got no reply and changed nothing', () =>
     expect(tasks.some(t => t.asked === '/context')).toBe(false))

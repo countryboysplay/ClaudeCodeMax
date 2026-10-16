@@ -8,6 +8,7 @@ export interface Usage {
   fiveHour?: { pct: number; resetsAt: number }
   week?: { pct: number; resetsAt: number }
   cacheExpiresAt?: number
+  sessionId?: string
 }
 
 export interface StepView {

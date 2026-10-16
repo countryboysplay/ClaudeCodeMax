@@ -1,4 +1,14 @@
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 import type { Usage } from '../shared/types'
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
+// Reopen exactly this session, never "the latest one in the folder" (--continue): that could be
+// yesterday's conversation, one just cleared, or one started in another terminal.
+export function resumeFlag(sessionId: string | undefined, transcriptDir: string): string {
+  return sessionId && UUID.test(sessionId) && existsSync(join(transcriptDir, `${sessionId}.jsonl`)) ? ` --resume ${sessionId}` : ''
+}
 
 const num = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined)
 const obj = (v: unknown): Record<string, unknown> => (v && typeof v === 'object' && !Array.isArray(v) ? (v as Record<string, unknown>) : {})
@@ -30,5 +40,6 @@ export function parseUsage(raw: unknown, nowSec: number, fresh: boolean): Usage 
   const cache = obj(o.prompt_cache)
   const expires = num(cache.expires_at)
   if (cache.warm === true && expires !== undefined && expires > nowSec) u.cacheExpiresAt = expires
+  if (typeof o.session_id === 'string' && UUID.test(o.session_id)) u.sessionId = o.session_id
   return u
 }
