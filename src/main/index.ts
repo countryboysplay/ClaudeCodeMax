@@ -187,7 +187,9 @@ async function startDashboard(): Promise<void> {
   services = {
     headroom: new Service({
       name: 'headroom',
-      command: cmdFor('headroom', 'headroom proxy --port {port}'),
+      // --lossless: keep the big win (compressed tool definitions) but never drop words from tool
+      // output, which Claude acts on. Measured: 28.2k -> 10.8k starting tokens, 1-hour cache intact.
+      command: cmdFor('headroom', 'headroom proxy --lossless --port {port}'),
       healthUrl: `http://127.0.0.1:${ports.headroom}/stats`,
       // Headroom sends an anonymous usage beacon and checks PyPI daily unless told not to.
       env: { HEADROOM_BEACON: 'off', HEADROOM_UPDATE_CHECK: 'off' }
