@@ -105,6 +105,26 @@ describe('MemoryRunner', () => {
     expect(w.calls()).toEqual(['distill'])
   })
 
+  it('skips a job that fails at two app starts so it cannot block the queue', async () => {
+    const w = world()
+    const boot = w.make()
+    await boot.init()
+    boot.stop() // its queue watcher would otherwise drain alongside the runners below
+    w.say('x'.repeat(9000))
+    enqueue(w.root, { kind: 'distill', transcript: w.transcript })
+    process.env.CCM_FAKE_FAIL = '1'
+    const first = w.make()
+    await first.drain() // first start: fails, stays queued
+    expect(readQueue(w.root)).toHaveLength(1)
+    first.stop()
+    const second = w.make()
+    await second.drain() // second start: fails again, skipped
+    expect(readQueue(w.root)).toEqual([])
+    expect(second.log).toContain('Skipped s1.jsonl after it failed at two app starts.')
+    expect(Object.values(readState(w.root).failures)).toEqual([])
+    expect(Object.values(readState(w.root).offsets)[0]).toBeGreaterThan(0)
+  })
+
   it('leaves jobs queued once the daily cap is reached', async () => {
     const w = world()
     const r = w.make({ dailyCap: 0 })

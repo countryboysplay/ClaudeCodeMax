@@ -6,8 +6,8 @@ Below is part of a recent Claude Code session. Update the memory so future sessi
 
 ## Where memories go
 - user.md: who the user is (role, expertise, preferences). type: user
-- topics/<name>.md: facts that hold across all projects
-- ${o.projectDir}/topics/<name>.md: facts about this project only
+- topics/<name>.md: facts and feedback that hold in every project, no matter which one is open
+- ${o.projectDir}/topics/<name>.md: facts and feedback about this project only. If a note names this project, its repo, its files or its features, it goes here, even when it is feedback about how to work
 
 ## File format (exactly this; one fact per file; at most 200 lines)
 ---

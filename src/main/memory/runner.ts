@@ -106,11 +106,31 @@ export class MemoryRunner {
           this.say(`Daily cap of ${this.o.dailyCap} runs reached; ${readQueue(root).length} jobs wait for tomorrow.`)
           break
         }
-        const ok = job.kind === 'distill' ? await this.distill(job.transcript) : await this.recheck(job.file)
-        if (!ok) {
-          this.halted = true // retried at next app start
-          break
+        const target = job.kind === 'distill' ? job.transcript : job.file
+        let ok = false
+        try {
+          ok = job.kind === 'distill' ? await this.distill(job.transcript) : await this.recheck(job.file)
+        } catch (err) {
+          // Undo a half-finished run now, or the next job's commit would keep it unvalidated.
+          this.say(`Memory job failed: ${msg(err)}`)
+          await rollback(root)
+          this.setInFlight(root, null)
         }
+        const st = readState(root)
+        const key = pathKey(target)
+        if (!ok) {
+          st.failures[key] = (st.failures[key] ?? 0) + 1
+          if (st.failures[key] < 2) {
+            writeState(root, st)
+            this.halted = true // usually offline: retried at the next app start
+            break
+          }
+          // Failed at two separate starts: skip it so it can't block every job queued behind it.
+          delete st.failures[key]
+          if (job.kind === 'distill' && existsSync(target)) st.offsets[key] = statSync(target).size
+          this.say(`Skipped ${basename(target)} after it failed at two app starts.`)
+        } else delete st.failures[key]
+        writeState(root, st)
         removeJob(root, job)
       }
       await this.maintain()

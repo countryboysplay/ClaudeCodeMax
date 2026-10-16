@@ -201,7 +201,7 @@ pinned: false
 The retry logic lives in client.ts...
 ```
 
-There are four types: `user` and `feedback` (about you and how you like to work) and `project` and `reference` (about the code). `user` and `feedback` memories always move to the global tier, because they apply to every project.
+There are four types: `user` and `feedback` (about you and how you like to work) and `project` and `reference` (about the code). `user` memories always move to the global tier, because they apply to every project. `feedback` stays where the distiller put it: feedback about one project stays in that project, so its rules don't load in every other project.
 
 ### What happens during a session
 
@@ -232,7 +232,7 @@ With the app closed, edit `memory` in `%APPDATA%\ClaudeCodeMax\settings.json`:
 
 There's no on/off switch yet. `dailyCap: 0` stops new memories from being made, but sessions still get the existing index.
 
-If a distill fails, the app stops distilling until its next start. The reason is in the Memory tab's **Distiller log**.
+If a distill fails, the app stops distilling until its next start. The reason is in the Memory tab's **Distiller log**. A job that fails at two app starts is skipped, so one bad transcript can't hold up the rest of the queue.
 
 ## Privacy and security
 

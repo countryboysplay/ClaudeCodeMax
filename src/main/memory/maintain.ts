@@ -26,7 +26,8 @@ export function promote(root: string): number {
   let n = 0
   for (const slug of projectSlugs(root))
     for (const m of listMemories(join(root, 'projects', slug))) {
-      if (m.meta.type !== 'user' && m.meta.type !== 'feedback') continue
+      // Only facts about the user are global by nature; feedback is often project-specific.
+      if (m.meta.type !== 'user') continue
       const dest = join(root, 'topics', basename(m.file))
       const existing = readMemory(dest)
       if (!existing || existing.meta.verified <= m.meta.verified) writeMemory({ ...m, file: dest })

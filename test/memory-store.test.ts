@@ -29,14 +29,14 @@ describe('repo', () => {
 describe('state', () => {
   it('falls back to defaults when missing or corrupt', () => {
     const root = fresh()
-    expect(readState(root)).toEqual({ offsets: {}, runs: { day: '', count: 0 }, imported: false, inFlight: null })
+    expect(readState(root)).toEqual({ offsets: {}, runs: { day: '', count: 0 }, imported: false, inFlight: null, failures: {} })
     writeFileSync(join(root, '.state.json'), '{bad')
     expect(readState(root).imported).toBe(false)
   })
   it('round-trips', () => {
     const root = fresh()
-    writeState(root, { offsets: { a: 5 }, runs: { day: '2026-09-24', count: 2 }, imported: true, inFlight: 'x' })
-    expect(readState(root)).toEqual({ offsets: { a: 5 }, runs: { day: '2026-09-24', count: 2 }, imported: true, inFlight: 'x' })
+    writeState(root, { offsets: { a: 5 }, runs: { day: '2026-09-24', count: 2 }, imported: true, inFlight: 'x', failures: { b: 1 } })
+    expect(readState(root)).toEqual({ offsets: { a: 5 }, runs: { day: '2026-09-24', count: 2 }, imported: true, inFlight: 'x', failures: { b: 1 } })
   })
 })
 

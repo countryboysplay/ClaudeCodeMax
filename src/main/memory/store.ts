@@ -35,17 +35,20 @@ export interface MemState {
   // Set right before the distiller's run() and cleared once validate/commit/rollback finishes.
   // If this is still set at the next init(), the previous run died mid-distill.
   inFlight: string | null
+  // Failed attempts per job target (pathKey); a job that fails at two app starts is skipped.
+  failures: Record<string, number>
 }
 
 export function readState(root: string): MemState {
-  const d: MemState = { offsets: {}, runs: { day: '', count: 0 }, imported: false, inFlight: null }
+  const d: MemState = { offsets: {}, runs: { day: '', count: 0 }, imported: false, inFlight: null, failures: {} }
   try {
     const v = JSON.parse(readFileSync(join(root, '.state.json'), 'utf8'))
     return {
       offsets: v.offsets && typeof v.offsets === 'object' ? v.offsets : d.offsets,
       runs: typeof v.runs?.day === 'string' && typeof v.runs?.count === 'number' ? v.runs : d.runs,
       imported: v.imported === true,
-      inFlight: typeof v.inFlight === 'string' ? v.inFlight : null
+      inFlight: typeof v.inFlight === 'string' ? v.inFlight : null,
+      failures: v.failures && typeof v.failures === 'object' && !Array.isArray(v.failures) ? v.failures : {}
     }
   } catch {
     return d

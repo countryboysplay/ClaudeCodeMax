@@ -40,15 +40,22 @@ describe('recordUse', () => {
 })
 
 describe('promote', () => {
-  it('moves user and feedback memories to global, keeping the newer copy', () => {
+  it('moves user memories to global, keeping the newer copy', () => {
     const root = fresh('ccm-m-')
-    writeMemory({ file: join(root, 'projects', 'P', 'topics', 'pref.md'), meta: meta({ name: 'pref', type: 'feedback', verified: '2026-09-22' }), body: 'new' })
-    writeMemory({ file: join(root, 'topics', 'pref.md'), meta: meta({ name: 'pref', type: 'feedback', verified: '2026-09-01' }), body: 'old' })
+    writeMemory({ file: join(root, 'projects', 'P', 'topics', 'me.md'), meta: meta({ name: 'me', type: 'user', verified: '2026-09-22' }), body: 'new' })
+    writeMemory({ file: join(root, 'topics', 'me.md'), meta: meta({ name: 'me', type: 'user', verified: '2026-09-01' }), body: 'old' })
     writeMemory({ file: join(root, 'projects', 'P', 'topics', 'fact.md'), meta: meta({ name: 'fact' }), body: '' })
     expect(promote(root)).toBe(1)
-    expect(readMemory(join(root, 'topics', 'pref.md'))!.body).toBe('new')
-    expect(existsSync(join(root, 'projects', 'P', 'topics', 'pref.md'))).toBe(false)
+    expect(readMemory(join(root, 'topics', 'me.md'))!.body).toBe('new')
+    expect(existsSync(join(root, 'projects', 'P', 'topics', 'me.md'))).toBe(false)
     expect(existsSync(join(root, 'projects', 'P', 'topics', 'fact.md'))).toBe(true)
+  })
+
+  it('leaves project feedback in its project, so its rules do not load in every other project', () => {
+    const root = fresh('ccm-m-')
+    writeMemory({ file: join(root, 'projects', 'P', 'topics', 'pref.md'), meta: meta({ name: 'pref', type: 'feedback' }), body: 'on P, do X' })
+    expect(promote(root)).toBe(0)
+    expect(existsSync(join(root, 'projects', 'P', 'topics', 'pref.md'))).toBe(true)
   })
 })
 
