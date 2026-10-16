@@ -13,7 +13,7 @@ const alive = (pid: number) => {
   }
 }
 
-test('runs Claude in the project, serves the Cost panel, and leaves no orphans', async () => {
+test('runs Claude in the project, serves the Savings panel, reports usage, and leaves no orphans', async () => {
   const pids = mkdtempSync(join(tmpdir(), 'ccm-pids-'))
   const project = mkdtempSync(join(tmpdir(), 'ccm project ')) // space on purpose
   const stub = `node "${join(fixtures, 'stub-server.mjs')}" {port}`
@@ -27,7 +27,6 @@ test('runs Claude in the project, serves the Cost panel, and leaves no orphans',
       CCM_PROJECT: project,
       CCM_TEST_PIDS: pids,
       CCM_CMD_CLAUDE: join(fixtures, 'fake-claude.cmd'),
-      CCM_CMD_CODEBURN: stub,
       CCM_CMD_HEADROOM: stub,
       CCM_MEMORY_DIR: memory,
       CCM_CLAUDE_PROJECTS: mkdtempSync(join(tmpdir(), 'ccm-cp-')),
@@ -42,19 +41,17 @@ test('runs Claude in the project, serves the Cost panel, and leaves no orphans',
   await expect(term).toContainText('ARGS=--settings')
   await expect(term).toContainText('AUTO_MEMORY_OFF=1')
   await expect.poll(() => existsSync(join(memory, '.git')), { timeout: 15_000 }).toBe(true)
-  await expect(win.getByText('Codeburn: running')).toBeVisible({ timeout: 30_000 })
+  await expect(term).toContainText('USAGE_FILE=')
+  await expect(win.getByText('Headroom: running')).toBeVisible({ timeout: 30_000 })
+  // fake-claude plays the status line script once, like Claude Code does after a response.
+  await expect(win.getByText('5h: 42%')).toBeVisible({ timeout: 15_000 })
+  await expect(win.getByText('Context: 31%')).toBeVisible()
 
-  await win.getByRole('tab', { name: 'Cost' }).click()
-  // Electron's <webview> rewrites its `src` attribute to the guest's actual navigated URL once
-  // navigation completes, and Chromium canonicalizes a bare-origin URL by appending a trailing
-  // slash (e.g. "http://localhost:4747" -> "http://localhost:4747/"). Allow that trailing slash.
-  await expect(win.locator('webview')).toHaveAttribute('src', /^http:\/\/localhost:\d+\/?$/)
-
-  await win.getByRole('tab', { name: 'Graph' }).click()
-  await expect(win.getByRole('button', { name: 'Build graph' })).toBeVisible()
+  await win.getByRole('tab', { name: 'Savings' }).click()
+  await expect(win.locator('webview')).toHaveAttribute('src', /^http:\/\/127\.0\.0\.1:\d+\/dashboard$/)
 
   const started = readdirSync(pids).map(f => Number(f.split('-')[1]))
-  expect(started.length).toBeGreaterThanOrEqual(3) // claude + codeburn stub + headroom stub
+  expect(started.length).toBeGreaterThanOrEqual(2) // claude + headroom stub
 
   await app.close()
   await expect.poll(() => started.filter(alive), { timeout: 15_000 }).toEqual([])

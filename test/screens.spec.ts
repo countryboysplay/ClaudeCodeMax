@@ -9,7 +9,6 @@ const baseEnv = () => ({
   ...process.env,
   CCM_USER_DATA: mkdtempSync(join(tmpdir(), 'ccm-data-')),
   CCM_CMD_CLAUDE: join(fixtures, 'fake-claude.cmd'),
-  CCM_CMD_CODEBURN: stub,
   CCM_CMD_HEADROOM: stub
 })
 
@@ -21,8 +20,8 @@ for (const scheme of ['light', 'dark'] as const) {
     })
     const win = await app.firstWindow()
     await win.emulateMedia({ colorScheme: scheme })
-    await win.getByText('Codeburn: running').waitFor({ timeout: 30_000 })
-    for (const tab of ['Cost', 'Graph', 'Savings']) {
+    await win.getByText('Headroom: running').waitFor({ timeout: 30_000 })
+    for (const tab of ['Savings', 'Memory']) {
       await win.getByRole('tab', { name: tab }).click()
       await win.screenshot({ path: `screens/dashboard-${tab.toLowerCase()}-${scheme}.png` })
     }

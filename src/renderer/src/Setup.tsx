@@ -99,7 +99,7 @@ export function Setup({ initial, onDone }: { initial: StepView[]; onDone: (s: Ap
     <div className="setup" role="dialog" aria-modal="true" aria-labelledby="setup-title">
       <h1 id="setup-title" ref={titleRef} tabIndex={-1}>Set up ClaudeCodeMax</h1>
       <p>
-        ClaudeCodeMax runs Claude Code together with Codeburn, Headroom, Graphify and Ponytail. Required tools must be installed. Optional
+        ClaudeCodeMax runs Claude Code together with Headroom and Ponytail. Required tools must be installed. Optional
         ones can be skipped and installed later from Tools → Re-run setup.
       </p>
       {requiredSteps.length > 0 && (

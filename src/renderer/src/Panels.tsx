@@ -3,8 +3,6 @@ import type { AppState, Status } from '../../shared/types'
 import { STATUS_TEXT } from './StatusBar'
 
 const TABS = [
-  { id: 'cost', label: 'Cost' },
-  { id: 'graph', label: 'Graph' },
   { id: 'savings', label: 'Savings' },
   { id: 'memory', label: 'Memory' }
 ]
@@ -63,9 +61,7 @@ function MemoryView() {
 }
 
 export function Panels({ state, onSetup }: { state: AppState; onSetup: () => void }) {
-  const [tab, setTab] = useState(TABS.some(t => t.id === state.tab) ? state.tab : 'cost')
-  const [graphVersion, setGraphVersion] = useState(0)
-  useEffect(() => window.api.onGraphChanged(() => setGraphVersion(v => v + 1)), [])
+  const [tab, setTab] = useState(TABS.some(t => t.id === state.tab) ? state.tab : TABS[0].id)
 
   const select = (id: string) => {
     setTab(id)
@@ -87,40 +83,16 @@ export function Panels({ state, onSetup }: { state: AppState; onSetup: () => voi
   }
 
   function body() {
-    if (tab === 'cost') {
-      if (state.installed.codeburn === false) return <Missing tool="Codeburn" onSetup={onSetup} />
-      return <ServiceView name="codeburn" label="Codeburn" status={state.services.codeburn} url={state.urls.cost} />
-    }
-    if (tab === 'savings') {
-      if (state.installed.headroom === false) return <Missing tool="Headroom" onSetup={onSetup} />
-      if (!state.headroom)
-        return (
-          <div className="empty">
-            <p>Headroom is off.</p>
-            <button onClick={() => void window.api.setHeadroom(true)}>Turn on Headroom</button>
-          </div>
-        )
-      return <ServiceView name="headroom" label="Headroom" status={state.services.headroom} url={state.urls.savings} />
-    }
     if (tab === 'memory') return <MemoryView />
-    if (state.installed.graphify === false) return <Missing tool="Graphify" onSetup={onSetup} />
-    if (!state.project)
+    if (state.installed.headroom === false) return <Missing tool="Headroom" onSetup={onSetup} />
+    if (!state.headroom)
       return (
         <div className="empty">
-          <p>Open a project to see its knowledge graph.</p>
+          <p>Headroom is off.</p>
+          <button onClick={() => void window.api.setHeadroom(true)}>Turn on Headroom</button>
         </div>
       )
-    if (!state.graphExists)
-      return (
-        <div className="empty">
-          <p>No graph for this project yet.</p>
-          <p className="muted">Graphify maps your code so Claude can navigate it. Takes about a minute.</p>
-          <button className="primary" onClick={() => window.api.ptyWrite('/graphify .\r')}>
-            Build graph
-          </button>
-        </div>
-      )
-    return <webview key={graphVersion} src={state.urls.graph!} title="Graphify knowledge graph panel" />
+    return <ServiceView name="headroom" label="Headroom" status={state.services.headroom} url={state.urls.savings} />
   }
 
   return (

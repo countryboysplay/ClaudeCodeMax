@@ -1,8 +1,7 @@
 import { app, BrowserWindow, dialog, ipcMain, Menu, nativeTheme, shell } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import { join } from 'node:path'
-import { existsSync, watchFile, unwatchFile, writeFileSync } from 'node:fs'
-import { pathToFileURL } from 'node:url'
+import { existsSync, readFileSync, statSync, watchFile, writeFileSync } from 'node:fs'
 import { spawn as spawnPty, type IPty } from '@lydell/node-pty'
 import { refreshPath } from './path'
 import { runShell, killTree, killAll } from './run'
@@ -14,12 +13,12 @@ import { STEPS, check, install, blockedBy, needsWizard } from './setup'
 import { MemoryRunner } from './memory/runner'
 import { claudeProjectsDir, memDir } from './memory/files'
 import { git, readQueue } from './memory/store'
-import type { AppState, InitResult, InstallResult, ServiceName, StepView } from '../shared/types'
+import { parseUsage } from './usage'
+import type { AppState, InitResult, InstallResult, ServiceName, StepView, Usage } from '../shared/types'
 
 const REPO_URL = 'https://github.com/countryboysplay/ClaudeCodeMax'
 const UPDATE_CMDS = [
-  'npm update -g codeburn',
-  'uv tool upgrade headroom-ai graphifyy',
+  'uv tool upgrade headroom-ai',
   'claude update',
   'claude plugin update ponytail@ponytail'
 ]
@@ -36,29 +35,51 @@ let size = { cols: 120, rows: 30 }
 let installed: Record<string, boolean> = {}
 let services: Record<ServiceName, Service> | null = null
 let memory: MemoryRunner | null = null
-const ports: Record<ServiceName, number> = { codeburn: 4747, headroom: 8787 }
+const ports: Record<ServiceName, number> = { headroom: 8787 }
 let quitting = false
+let usage: Usage | null = null
+let sessionStart = 0
 
 const override = (name: string, fallback: string) => process.env[`CCM_CMD_${name}`] ?? fallback
 const save = () => saveSettings(settingsFile(), settings)
 const send = (channel: string, ...args: unknown[]) => {
   if (win && !win.isDestroyed()) win.webContents.send(channel, ...args)
 }
-const graphFile = () => (project ? join(project, 'graphify-out', 'graph.html') : null)
+const usageFile = () => join(app.getPath('userData'), 'usage.json')
 
-const hookScript = () =>
-  (app.isPackaged ? join(process.resourcesPath, 'memory-hook.mjs') : join(app.getAppPath(), 'resources', 'memory-hook.mjs')).replace(/\\/g, '/')
+const resource = (name: string) =>
+  (app.isPackaged ? join(process.resourcesPath, name) : join(app.getAppPath(), 'resources', name)).replace(/\\/g, '/')
 
-// Memory hooks for app-launched sessions only: passed with --settings, so ~/.claude/settings.json is never touched.
+// Memory hooks and the usage status line for app-launched sessions only: passed with --settings, so ~/.claude/settings.json is never touched.
 function writeHooks(): string {
-  const hook = (event: string) => [{ hooks: [{ type: 'command', command: `node "${hookScript()}" ${event}` }] }]
+  const hook = (event: string) => [{ hooks: [{ type: 'command', command: `node "${resource('memory-hook.mjs')}" ${event}` }] }]
   const file = join(app.getPath('userData'), 'ccm-hooks.json')
-  writeFileSync(file, JSON.stringify({ hooks: { SessionStart: hook('start'), SessionEnd: hook('enqueue'), PreCompact: hook('enqueue') } }, null, 2))
+  writeFileSync(
+    file,
+    JSON.stringify(
+      {
+        hooks: { SessionStart: hook('start'), SessionEnd: hook('enqueue'), PreCompact: hook('enqueue') },
+        statusLine: { type: 'command', command: `node "${resource('statusline.mjs')}"` }
+      },
+      null,
+      2
+    )
+  )
   return file
 }
 
+// Re-reads the file the status line script writes. Only data written since this Claude
+// session started counts as the session's own; older data still carries the plan limits.
+function readUsage(): void {
+  try {
+    const f = usageFile()
+    usage = parseUsage(JSON.parse(readFileSync(f, 'utf8')), Date.now() / 1000, statSync(f).mtimeMs >= sessionStart)
+  } catch {
+    usage = null // no session has reported yet
+  }
+}
+
 function state(): AppState {
-  const g = graphFile()
   return {
     project,
     recent: settings.recent,
@@ -66,14 +87,10 @@ function state(): AppState {
     ponytail: settings.ponytail,
     split: settings.split,
     tab: settings.tab,
-    services: { codeburn: services?.codeburn.status ?? 'stopped', headroom: services?.headroom.status ?? 'stopped' },
+    services: { headroom: services?.headroom.status ?? 'stopped' },
     ports: { ...ports },
-    urls: {
-      cost: `http://localhost:${ports.codeburn}`,
-      savings: `http://127.0.0.1:${ports.headroom}/dashboard`,
-      graph: g ? pathToFileURL(g).href : null
-    },
-    graphExists: !!g && existsSync(g),
+    urls: { savings: `http://127.0.0.1:${ports.headroom}/dashboard` },
+    usage,
     ptyUsesHeadroom,
     installed
   }
@@ -97,6 +114,9 @@ function launchClaude(): void {
   if (ptyUsesHeadroom) env.ANTHROPIC_BASE_URL = `http://127.0.0.1:${ports.headroom}`
   env.CLAUDE_CODE_DISABLE_AUTO_MEMORY = '1'
   env.CCM_MEMORY_DIR = memDir()
+  env.CCM_USAGE_FILE = usageFile()
+  sessionStart = Date.now()
+  readUsage()
   try {
     // A string is passed to cmd.exe verbatim; /s keeps the inner quotes intact when paths contain spaces.
     const p = spawnPty(process.env.ComSpec ?? 'cmd.exe', `/s /c ""${override('CLAUDE', 'claude')}" --settings "${writeHooks()}""`, {
@@ -128,15 +148,9 @@ function openProject(dir: string): boolean {
     pushState()
     return false
   }
-  const old = graphFile()
-  if (old) unwatchFile(old)
   project = dir
   settings.recent = addRecent(settings.recent, dir)
   save()
-  watchFile(graphFile()!, { interval: 2000 }, () => {
-    pushState()
-    send('graph:changed')
-  })
   launchClaude()
   return true
 }
@@ -150,7 +164,6 @@ async function pickProject(): Promise<void> {
 
 function syncServices(): void {
   if (quitting || !services) return
-  if (installed.codeburn !== false && services.codeburn.status === 'stopped') services.codeburn.start()
   if (settings.headroom && installed.headroom !== false && services.headroom.status === 'stopped') services.headroom.start()
 }
 
@@ -158,15 +171,9 @@ let started = false
 async function startDashboard(): Promise<void> {
   if (started) return
   started = true
-  ports.codeburn = await freePort(4747)
   ports.headroom = await freePort(8787)
   const cmdFor = (name: ServiceName, fallback: string) => override(name.toUpperCase(), fallback).replace('{port}', String(ports[name]))
   services = {
-    codeburn: new Service({
-      name: 'codeburn',
-      command: cmdFor('codeburn', 'codeburn web --no-open --port {port}'),
-      healthUrl: `http://localhost:${ports.codeburn}`
-    }),
     headroom: new Service({
       name: 'headroom',
       command: cmdFor('headroom', 'headroom proxy --port {port}'),
@@ -175,6 +182,10 @@ async function startDashboard(): Promise<void> {
   }
   for (const s of Object.values(services)) s.on('status', pushState)
   syncServices()
+  watchFile(usageFile(), { interval: 1000 }, () => {
+    readUsage()
+    pushState()
+  })
   memory = new MemoryRunner({ root: memDir(), claudeProjects: claudeProjectsDir(), command: override('DISTILLER', 'claude'), ...settings.memory })
   void memory.init()
   const first = process.env.CCM_PROJECT ?? settings.recent.find(d => existsSync(d))
@@ -204,7 +215,7 @@ function stepViews(r: Record<string, boolean>): StepView[] {
 // ---- IPC ------------------------------------------------------------------
 
 function registerIpc(): void {
-  const svc = (n: unknown) => (services && (n === 'codeburn' || n === 'headroom') ? services[n] : null)
+  const svc = (n: unknown) => (services && n === 'headroom' ? services[n] : null)
 
   ipcMain.handle('app:init', async (): Promise<InitResult> => {
     if (process.env.CCM_SKIP_SETUP) {
@@ -289,7 +300,6 @@ function registerIpc(): void {
   ipcMain.handle('tools:update', async () => {
     // Running exes (headroom.exe, claude.exe) are locked on Windows, so stop everything first.
     stopClaude()
-    services?.codeburn.stop()
     services?.headroom.stop()
     for (const c of UPDATE_CMDS) {
       if (quitting) break
@@ -351,7 +361,7 @@ function createWindow(): void {
       webviewTag: true
     }
   })
-  guardWebviews(win, () => project)
+  guardWebviews(win)
   if (process.env.ELECTRON_RENDERER_URL) void win.loadURL(process.env.ELECTRON_RENDERER_URL)
   else void win.loadFile(join(__dirname, '../renderer/index.html'))
 }

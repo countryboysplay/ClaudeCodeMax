@@ -19,7 +19,7 @@ function lockDown(contents: WebContents, allowed: (url: string) => boolean): voi
   contents.on('will-redirect', navigationHandler)
 }
 
-export function guardWebviews(win: BrowserWindow, getProject: () => string | null): void {
+export function guardWebviews(win: BrowserWindow): void {
   lockDown(win.webContents, () => false)
   win.webContents.on('will-attach-webview', (e, prefs, params) => {
     delete prefs.preload
@@ -27,10 +27,10 @@ export function guardWebviews(win: BrowserWindow, getProject: () => string | nul
     prefs.contextIsolation = true
     prefs.sandbox = true
     prefs.webSecurity = true
-    if (!isAllowedUrl(params.src, getProject())) e.preventDefault()
+    if (!isAllowedUrl(params.src)) e.preventDefault()
   })
   win.webContents.on('did-attach-webview', (_e, contents) => {
-    lockDown(contents, url => isAllowedUrl(url, getProject()))
+    lockDown(contents, isAllowedUrl)
     contents.session.setPermissionRequestHandler((_wc, _perm, cb) => cb(false))
     contents.session.setPermissionCheckHandler(() => false)
   })

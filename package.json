@@ -2,7 +2,7 @@
   "name": "claudecodemax",
   "productName": "ClaudeCodeMax",
   "version": "1.0.0",
-  "description": "Claude Code with Codeburn, Graphify, Headroom and Ponytail in one Windows app",
+  "description": "Claude Code with plan usage, Headroom and Ponytail in one Windows app",
   "main": "out/main/index.js",
   "license": "MIT",
   "scripts": {

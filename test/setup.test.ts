@@ -35,24 +35,24 @@ describe('check', () => {
 describe('install', () => {
   it('runs commands in order and streams them', async () => {
     const { run, calls } = fakeRunner({
-      'uv tool install graphifyy': { code: 0, output: 'Installed graphifyy' },
-      'graphify install': { code: 0, output: 'skill registered' }
+      'claude plugin marketplace add DietrichGebert/ponytail': { code: 0, output: 'Added marketplace' },
+      'claude plugin install ponytail@ponytail -y': { code: 0, output: 'Installed ponytail' }
     })
     const lines: string[] = []
-    const r = await install(step('graphify'), run, l => lines.push(l))
+    const r = await install(step('ponytail'), run, l => lines.push(l))
     expect(r.ok).toBe(true)
-    expect(calls).toEqual(['uv tool install graphifyy', 'graphify install'])
-    expect(lines[0]).toBe('> uv tool install graphifyy')
+    expect(calls).toEqual(['claude plugin marketplace add DietrichGebert/ponytail', 'claude plugin install ponytail@ponytail -y'])
+    expect(lines[0]).toBe('> claude plugin marketplace add DietrichGebert/ponytail')
   })
   it('stops at the first failing command and returns its output', async () => {
-    const { run, calls } = fakeRunner({ 'uv tool install graphifyy': { code: 2, output: 'network down' } })
-    const r = await install(step('graphify'), run, () => {})
+    const { run, calls } = fakeRunner({ 'claude plugin marketplace add DietrichGebert/ponytail': { code: 2, output: 'network down' } })
+    const r = await install(step('ponytail'), run, () => {})
     expect(r).toEqual({ ok: false, error: 'network down' })
-    expect(calls).toEqual(['uv tool install graphifyy'])
+    expect(calls).toEqual(['claude plugin marketplace add DietrichGebert/ponytail'])
   })
   it('reports the exit code when a failure prints nothing', async () => {
-    const { run } = fakeRunner({ 'npm install -g codeburn': { code: 5, output: '' } })
-    expect((await install(step('codeburn'), run, () => {})).error).toBe('Exited with code 5')
+    const { run } = fakeRunner({ 'uv tool install --python 3.13 "headroom-ai[all]"': { code: 5, output: '' } })
+    expect((await install(step('headroom'), run, () => {})).error).toBe('Exited with code 5')
   })
 })
 
@@ -72,7 +72,7 @@ describe('needsWizard', () => {
 
 describe('STEPS', () => {
   it('lists every tool in install order', () =>
-    expect(STEPS.map(s => s.id)).toEqual(['git', 'node', 'uv', 'claude', 'codeburn', 'headroom', 'graphify', 'ponytail']))
-  it('marks git, node, claude and codeburn as required', () =>
-    expect(STEPS.filter(s => s.required).map(s => s.id)).toEqual(['git', 'node', 'claude', 'codeburn']))
+    expect(STEPS.map(s => s.id)).toEqual(['git', 'node', 'uv', 'claude', 'headroom', 'ponytail']))
+  it('marks git, node and claude as required', () =>
+    expect(STEPS.filter(s => s.required).map(s => s.id)).toEqual(['git', 'node', 'claude']))
 })

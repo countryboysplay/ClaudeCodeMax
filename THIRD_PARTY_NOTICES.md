@@ -6,9 +6,7 @@ source (npm, uv/PyPI, the Claude Code plugin marketplace), and ClaudeCodeMax run
 | Tool | License | Source |
 |---|---|---|
 | Claude Code | Anthropic terms | https://claude.com/claude-code |
-| Codeburn | MIT | https://github.com/getagentseal/codeburn |
 | Headroom | Apache-2.0 | https://github.com/headroomlabs-ai/headroom |
-| Graphify | Apache-2.0 | https://github.com/Graphify-Labs/graphify |
 | Ponytail | MIT | https://github.com/dietrichgebert/ponytail |
 
 Bundled in the app:

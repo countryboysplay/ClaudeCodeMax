@@ -10,6 +10,8 @@ asarUnpack:
 extraResources:
   - from: resources/memory-hook.mjs
     to: memory-hook.mjs
+  - from: resources/statusline.mjs
+    to: statusline.mjs
 win:
   target: nsis
   artifactName: ClaudeCodeMax-Setup-${version}.${ext}

@@ -32,7 +32,6 @@ export const STEPS: Step[] = [
     check: 'claude --version',
     install: ['powershell -NoProfile -ExecutionPolicy Bypass -Command "irm https://claude.ai/install.ps1 | iex"']
   },
-  { id: 'codeburn', label: 'Codeburn', required: true, requires: 'node', check: 'codeburn --version', install: ['npm install -g codeburn'] },
   {
     id: 'headroom',
     label: 'Headroom',
@@ -40,14 +39,6 @@ export const STEPS: Step[] = [
     requires: 'uv',
     check: 'headroom --version',
     install: ['uv tool install --python 3.13 "headroom-ai[all]"']
-  },
-  {
-    id: 'graphify',
-    label: 'Graphify',
-    required: false,
-    requires: 'uv',
-    check: 'graphify --version',
-    install: ['uv tool install graphifyy', 'graphify install']
   },
   {
     id: 'ponytail',

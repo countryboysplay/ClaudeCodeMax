@@ -104,6 +104,12 @@ h1[tabindex='-1']:focus-visible { outline: none; } /* programmatic dialog-open f
 .status-up .dot-mark { background: var(--ok); }
 .status-starting .dot-mark, .status-restarting .dot-mark { background: var(--warn); }
 .status-failed .dot-mark { background: var(--bad); }
+.usage { display: inline-flex; gap: 16px; align-items: center; margin-right: auto; }
+.level-ok .dot-mark { background: var(--ok); }
+.level-warn { color: var(--warn); font-weight: 600; }
+.level-warn .dot-mark { background: var(--warn); }
+.level-bad { color: var(--bad); font-weight: 600; }
+.level-bad .dot-mark { background: var(--bad); }
 
 .setup { position: fixed; inset: 0; overflow: auto; background: var(--bg); padding: 32px max(24px, calc(50% - 360px)); display: grid; gap: 16px; align-content: start; grid-auto-rows: max-content; }
 .setup > * { margin: 0; }

@@ -34,7 +34,6 @@ const api = {
   onPtyExit: on<[]>('pty:exit'),
   onState: on<[AppState]>('state'),
   onSetupLog: on<[string]>('setup:log'),
-  onGraphChanged: on<[]>('graph:changed'),
   onMenu: on<['update' | 'setup']>('menu')
 }
 

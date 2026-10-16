@@ -23,7 +23,7 @@ export const defaults = (): Settings => ({
   ponytail: true,
   skipped: [],
   split: 0.6,
-  tab: 'cost',
+  tab: 'savings',
   memory: { model: 'claude-haiku-4-5-20251001', dailyCap: 30, indexCap: 60 }
 })
 

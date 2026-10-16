@@ -1,5 +1,14 @@
 export type Status = 'stopped' | 'starting' | 'up' | 'restarting' | 'failed'
-export type ServiceName = 'codeburn' | 'headroom'
+export type ServiceName = 'headroom'
+
+export interface Usage {
+  model?: string
+  cost?: number
+  context?: number
+  fiveHour?: { pct: number; resetsAt: number }
+  week?: { pct: number; resetsAt: number }
+  cacheExpiresAt?: number
+}
 
 export interface StepView {
   id: string
@@ -19,8 +28,8 @@ export interface AppState {
   tab: string
   services: Record<ServiceName, Status>
   ports: Record<ServiceName, number>
-  urls: { cost: string; savings: string; graph: string | null }
-  graphExists: boolean
+  urls: { savings: string }
+  usage: Usage | null
   ptyUsesHeadroom: boolean
   installed: Record<string, boolean>
 }
