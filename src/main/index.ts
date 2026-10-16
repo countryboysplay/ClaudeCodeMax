@@ -18,7 +18,7 @@ import { parseUsage, resumeFlag } from './usage'
 import { leanSettings, readLeanInputs } from './lean'
 import { readTasks } from './tasks'
 import { scanDeferred } from './deferred'
-import { SkipChecker } from './skipcheck'
+import { SkipChecker, SKIP_MODEL } from './skipcheck'
 import { isInside } from './security'
 import type { AppState, InitResult, InstallResult, ServiceName, StepView, TaskReport, Usage } from '../shared/types'
 
@@ -300,7 +300,7 @@ function registerIpc(): void {
     skips ??= new SkipChecker({
       file: join(app.getPath('userData'), 'skip-cache.json'),
       command: override('CLASSIFIER', 'claude'),
-      model: settings.memory.model,
+      model: SKIP_MODEL,
       cwd: memDir(),
       onUpdate: () => send('tasks:updated')
     })

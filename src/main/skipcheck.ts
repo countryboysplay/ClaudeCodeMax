@@ -5,6 +5,8 @@ import type { Task } from '../shared/types'
 
 type Skip = Task['skip']
 const CONCURRENCY = 2
+// Sonnet judges the closing lines better than the distiller's Haiku, and the call is tiny.
+export const SKIP_MODEL = 'sonnet'
 
 // Ponytail ends every reply with one or two lines on what was skipped or not checked, and any risk.
 export const closer = (reply: string) =>
@@ -56,8 +58,8 @@ export class SkipChecker {
   verdict(reply: string): Skip {
     const text = closer(reply)
     if (!text) return 'no'
-    // The prompt is in the hash, so editing it re-classifies everything.
-    const key = createHash('sha256').update(skipPrompt(text)).digest('hex').slice(0, 16)
+    // The model and prompt are in the hash, so changing either re-classifies everything.
+    const key = createHash('sha256').update(this.o.model + skipPrompt(text)).digest('hex').slice(0, 16)
     if (key in this.cache) return this.cache[key] ? 'yes' : 'no'
     const s = this.state.get(key)
     if (s) return s

@@ -8,7 +8,7 @@ import { slugFor } from '../src/main/memory/files'
 import { resumeFlag } from '../src/main/usage'
 import { parseTranscript } from '../src/main/tasks'
 import { sliceTranscript } from '../src/main/memory/transcript'
-import { SkipChecker } from '../src/main/skipcheck'
+import { SkipChecker, SKIP_MODEL } from '../src/main/skipcheck'
 
 // Opt-in: spends a little real plan usage. Run with: $env:CCM_REAL_CLAUDE=1; npm run e2e:real
 describe.skipIf(!process.env.CCM_REAL_CLAUDE)('real Claude Code', () => {
@@ -60,7 +60,7 @@ describe.skipIf(!process.env.CCM_REAL_CLAUDE)('real Claude Code', () => {
   })
 
   it('the skip classifier works with real flags and leaves no transcript', { timeout: 120_000 }, async () => {
-    const c = new SkipChecker({ file: join(cwd, 'skip-cache.json'), command: 'claude', model: 'haiku', cwd, onUpdate: () => {} })
+    const c = new SkipChecker({ file: join(cwd, 'skip-cache.json'), command: 'claude', model: SKIP_MODEL, cwd, onUpdate: () => {} })
     const reply = "Done.\n\nI didn't run the tests."
     c.verdict(reply)
     await expect.poll(() => c.verdict(reply), { timeout: 60_000 }).toBe('yes')

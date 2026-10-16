@@ -19,6 +19,11 @@ Read `00-findings-and-process.md` first. Plan: `../plans/2026-10-16-finding-02-s
 
 I didn't run anything.` -> Haiku said skipped-with-no-reason; the user default says nothing skipped. Prompt wording for that case is not yet strong enough; left as is pending the user. Everything else matched, including the old regex failures ("later", someone else's "didn't", curly apostrophe, question after closer, markdown label).
 
+## Follow-up: classifier moved to Sonnet (user request, uncommitted)
+- `SKIP_MODEL = 'sonnet'` in `skipcheck.ts` (own constant; distiller keeps `settings.memory.model` Haiku). Model is part of the cache key, so old Haiku verdicts are not reused. README updated.
+- Re-ran: typecheck clean; `npm test` pass; `npm run smoke` pass; `e2e:real` 2 passed; the 17-case real-model check: 17/17 (Haiku was 16/17; Sonnet also treats "I didn't run anything." as nothing skipped).
+- Cost: Sonnet is roughly 3x Haiku per token; still about $0.0015 per new closer by the earlier estimate (not measured).
+
 ## Not verified
 - Unit table uses a fake that returns the expected answer, so it tests plumbing and `closer()`, not the model.
 - UI not viewed: needs a new installed build. The user's session runs on the installed release.
