@@ -43,3 +43,11 @@ export interface InstallResult {
   error?: string
   steps: StepView[]
 }
+
+export interface Deferred {
+  file: string
+  line: number
+  marker: string
+  text: string
+  reason: boolean
+}
