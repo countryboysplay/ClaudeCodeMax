@@ -51,3 +51,21 @@ export interface Deferred {
   text: string
   reason: boolean
 }
+
+export interface Task {
+  when: string
+  asked: string
+  added: string[]
+  files: string[]
+  note: string
+  reply: string
+  unfinished: boolean
+  skipFlag: boolean
+  checklist: { subject: string; status: string }[]
+}
+
+export interface TaskReport {
+  tasks: Task[]
+  deferred: Deferred[]
+  scanCapped: boolean
+}
